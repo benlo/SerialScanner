@@ -1,0 +1,13 @@
+marque;support;modele;ancre;serial;attendu;raison
+Apple;gravure;MacBook Air A2337;Serial;C02W61JZQ6LC;lecture;format 12 Apple
+Apple;gravure;MacBook Air A2337;S/N;HQ7Y9WJ2A3;lecture;format 10, abreviation S/N
+Dell;etiquette;Latitude 5420;Service Tag;5R8ZQ72;lecture;tag court 7
+Dell;etiquette;Precision 3560;S/T;7GH2K41;lecture;tag court ouvert par un chiffre
+HP;etiquette;ProBook 450 G8;S/N;5CD1234ABC;lecture;10 car., commence par un chiffre
+HP;etiquette;EliteBook 840 G8;Serial;8CG2051XYZ;lecture;10 car. profil HP
+Lenovo;etiquette;ThinkPad T14 Gen 2;S/N;PF3WJ3X2;lecture;8 car. profil Lenovo
+Lenovo;etiquette;ThinkPad X1 Carbon;S/N;R90JM9T7;lecture;8 car. profil Lenovo
+Asus;etiquette;ASUS ExpertBook B1;S/N;K9N0KU01D124956;lecture;15 car. profil Asus
+piege;etiquette;ThinkPad T14;SN;PF3WJ3X2;rejet;SN nu sans separateur
+piege;etiquette;Latitude 5420;Service Tag;YM0A26L3RT9B;rejet;12 sur ancre courte, ne doit pas etre tronque
+piege;gravure;MacBook Pro A2338;aucune;C17P34X9WD5T;rejet;numero nu sans mot-cle

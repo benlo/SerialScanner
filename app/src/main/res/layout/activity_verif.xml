@@ -1,0 +1,161 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Contrôle d'une lecture : la photo et le numéro dans la même vue, pour
+     qu'on lise l'un en corrigeant l'autre sans changer d'écran. La photo prend
+     la place disponible — c'est elle qui tranche, le numéro n'est qu'une
+     hypothèse de la machine. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/fond"
+    android:fitsSystemWindows="true"
+    android:orientation="vertical">
+
+    <com.google.android.material.appbar.MaterialToolbar
+        android:id="@+id/toolbar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@color/fond_barre"
+        app:navigationIconTint="@color/ambre"
+        app:subtitleTextColor="@color/texte_faible"
+        app:titleTextAppearance="@style/TitreEcran" />
+
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:background="#000000">
+
+        <fr.gotatanka.macsn.VuePhoto
+            android:id="@+id/photo"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:contentDescription="@string/thumb_desc" />
+
+        <TextView
+            android:id="@+id/sansPhoto"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:gravity="center"
+            android:padding="24dp"
+            android:text="@string/verif_sans_photo"
+            android:textAlignment="center"
+            android:textColor="@color/texte_faible"
+            android:textSize="14sp"
+            android:visibility="gone" />
+    </FrameLayout>
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="@color/separateur" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@color/fond_barre"
+        android:orientation="vertical"
+        android:paddingHorizontal="12dp"
+        android:paddingTop="10dp"
+        android:paddingBottom="12dp">
+
+        <!-- Le numéro en gros et espacé : c'est la seule ligne que l'œil doit
+             comparer caractère à caractère avec la gravure. -->
+        <EditText
+            android:id="@+id/serial"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:autofillHints="off"
+            android:background="@null"
+            android:fontFamily="monospace"
+            android:gravity="center_horizontal"
+            android:hint="@string/review_hint"
+            android:imeOptions="actionDone"
+            android:inputType="textCapCharacters|textNoSuggestions"
+            android:letterSpacing="0.14"
+            android:maxLines="1"
+            android:saveEnabled="false"
+            android:textColor="@color/texte"
+            android:textColorHint="@color/texte_faible"
+            android:textSize="26sp" />
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:layout_marginBottom="8dp"
+            android:background="@color/separateur" />
+
+        <TextView
+            android:id="@+id/alerte"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="8dp"
+            android:gravity="center_horizontal"
+            android:textColor="@color/a_reprendre"
+            android:textSize="13sp"
+            android:visibility="gone" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnCorriger"
+            style="@style/Widget.Material3.Button.TextButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="4dp"
+            android:visibility="gone" />
+
+        <!-- Statut explicite : après contrôle à l'œil, c'est l'opérateur qui
+             décide, pas le score de l'OCR. -->
+        <com.google.android.material.button.MaterialButtonToggleGroup
+            android:id="@+id/statut"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="10dp"
+            android:saveEnabled="false"
+            app:singleSelection="true">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnOk"
+                style="@style/Widget.Material3.Button.OutlinedButton"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:saveEnabled="false"
+                android:text="@string/verif_confirme" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnRevoir"
+                style="@style/Widget.Material3.Button.OutlinedButton"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:saveEnabled="false"
+                android:text="@string/verif_a_reprendre" />
+        </com.google.android.material.button.MaterialButtonToggleGroup>
+
+
+        <!-- Naviguer sans repasser par la liste : contrôler vingt-trois lignes
+             en revenant en arrière à chaque fois, personne ne le fait. -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnPrec"
+                style="@style/Widget.Material3.Button.OutlinedButton"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/verif_precedent" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnSuiv"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:layout_weight="1"
+                android:text="@string/verif_suivant" />
+        </LinearLayout>
+    </LinearLayout>
+</LinearLayout>

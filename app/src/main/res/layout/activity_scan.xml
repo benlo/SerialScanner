@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fitsSystemWindows="true">
+
+    <androidx.camera.view.PreviewView
+        android:id="@+id/preview"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
+
+    <!-- Dimensions posées en code depuis ScanRoi.FRAC_W/FRAC_H : une seule
+         source de vérité entre ce qu'on montre et ce qu'on lit réellement. -->
+    <View
+        android:id="@+id/viewfinder"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:layout_gravity="center"
+        android:background="@drawable/viewfinder" />
+
+    <TextView
+        android:id="@+id/hint"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="top"
+        android:background="#88000000"
+        android:padding="12dp"
+        android:text="@string/scan_hint"
+        android:textAlignment="center"
+        android:textColor="#fff" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom"
+        android:background="#88000000"
+        android:orientation="vertical"
+        android:padding="12dp">
+
+        <!-- L'avancement de la séquence : « 1 ✓ » puis « 1 ✓ 2 ✓ ». L'opérateur
+             doit savoir qu'une seconde lecture est en cours, sinon le zoom qui
+             bouge tout seul passe pour un défaut. -->
+        <TextView
+            android:id="@+id/etapes"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="2dp"
+            android:textAlignment="center"
+            android:textColor="@color/ok"
+            android:textSize="14sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/lastRead"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:fontFamily="monospace"
+            android:textAlignment="center"
+            android:textColor="#fff"
+            android:textSize="20sp" />
+
+        <TextView
+            android:id="@+id/etatZoom"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:textAlignment="center"
+            android:textColor="#bbb"
+            android:textSize="12sp" />
+
+        <!-- Paliers nommés plutôt qu'un curseur : cibles atteignables au pouce
+             avec des gants, et surtout reproductibles d'une machine à l'autre
+             sur un lot homogène. « A » rend la main à la rampe automatique. -->
+        <com.google.android.material.button.MaterialButtonToggleGroup
+            android:id="@+id/zoomGroupe"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginTop="6dp"
+            app:selectionRequired="true"
+            app:singleSelection="true">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/zoomAuto"
+                style="?attr/materialButtonOutlinedStyle"
+                android:layout_width="wrap_content"
+                android:layout_height="52dp"
+                android:minWidth="56dp"
+                android:text="@string/zoom_auto" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/zoom1"
+                style="?attr/materialButtonOutlinedStyle"
+                android:layout_width="wrap_content"
+                android:layout_height="52dp"
+                android:minWidth="56dp"
+                android:text="@string/zoom_1" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/zoom2"
+                style="?attr/materialButtonOutlinedStyle"
+                android:layout_width="wrap_content"
+                android:layout_height="52dp"
+                android:minWidth="56dp"
+                android:text="@string/zoom_2" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/zoom4"
+                style="?attr/materialButtonOutlinedStyle"
+                android:layout_width="wrap_content"
+                android:layout_height="52dp"
+                android:minWidth="56dp"
+                android:text="@string/zoom_4" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/zoom6"
+                style="?attr/materialButtonOutlinedStyle"
+                android:layout_width="wrap_content"
+                android:layout_height="52dp"
+                android:minWidth="56dp"
+                android:text="@string/zoom_6" />
+        </com.google.android.material.button.MaterialButtonToggleGroup>
+
+        <!-- En retrait : avec l'ambre en couleur d'action, un bouton plein
+             ferait de l'abandon l'élément le plus voyant de l'écran. -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/cancel"
+            style="?attr/materialButtonOutlinedStyle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="@string/scan_cancel" />
+    </LinearLayout>
+</FrameLayout>

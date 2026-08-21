@@ -1,0 +1,60 @@
+<resources>
+    <style name="Theme.MacSN" parent="Theme.Material3.Dark.NoActionBar">
+        <item name="colorPrimary">@color/ambre</item>
+        <item name="colorOnPrimary">@color/fond</item>
+        <item name="colorPrimaryContainer">@color/ambre_sourd</item>
+        <item name="colorOnPrimaryContainer">@color/texte</item>
+        <item name="colorSecondary">@color/ambre</item>
+        <item name="colorOnSecondary">@color/fond</item>
+        <item name="colorSurface">@color/fond</item>
+        <item name="colorOnSurface">@color/texte</item>
+        <item name="colorSurfaceVariant">@color/fond_barre</item>
+        <item name="colorOnSurfaceVariant">@color/texte_faible</item>
+        <item name="colorOutline">@color/separateur</item>
+        <item name="android:statusBarColor">@color/fond</item>
+        <item name="android:windowBackground">@color/fond</item>
+        <item name="materialAlertDialogTheme">@style/ThemeOverlay.MacSN.Dialogue</item>
+    </style>
+
+    <!-- Les dialogues suivaient le thème du système, donc blancs sur une app
+         anthracite : choisir la marque du parc en pleine lumière d'atelier
+         faisait sursauter. -->
+    <style name="ThemeOverlay.MacSN.Dialogue" parent="ThemeOverlay.Material3.MaterialAlertDialog">
+        <item name="colorSurface">@color/fond_barre</item>
+        <item name="colorSurfaceContainerHigh">@color/fond_barre</item>
+        <item name="colorOnSurface">@color/texte</item>
+        <item name="colorOnSurfaceVariant">@color/texte_faible</item>
+        <item name="colorPrimary">@color/ambre</item>
+        <item name="android:textColorPrimary">@color/texte</item>
+        <item name="android:textColorSecondary">@color/texte_faible</item>
+        <item name="materialAlertDialogTitleTextStyle">@style/TitreDialogue</item>
+        <item name="shapeAppearanceOverlay">@style/FormeDialogue</item>
+    </style>
+
+    <style name="TitreDialogue" parent="MaterialAlertDialog.Material3.Title.Text">
+        <item name="android:textColor">@color/ambre</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+
+    <style name="FormeDialogue" parent="">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSize">16dp</item>
+    </style>
+
+    <!-- Titre d'écran : capitales ambre, interlettrage ouvert. Les capitales
+         serrées deviennent illisibles, d'où le letterSpacing. -->
+    <style name="TitreEcran" parent="TextAppearance.Material3.TitleLarge">
+        <item name="android:textAllCaps">true</item>
+        <item name="android:textColor">@color/ambre</item>
+        <item name="android:textSize">17sp</item>
+        <item name="android:letterSpacing">0.09</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+
+    <!-- Material 3 dessine le bouton flottant en carré arrondi : il faut
+         forcer le rayon à la moitié pour obtenir un vrai disque. -->
+    <style name="FormeRonde" parent="">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSize">50%</item>
+    </style>
+</resources>

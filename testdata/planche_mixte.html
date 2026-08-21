@@ -1,0 +1,127 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Planche mixte SerialScanner</title>
+<style>
+  body { background:#b9bcc0; font-family:"Helvetica Neue",Arial,sans-serif; margin:24px; }
+  h3 { color:#333; font-size:14px; font-weight:600; margin:0 0 4px; }
+  .intro { color:#555; font-size:11px; margin:0 0 20px; line-height:1.5; }
+  .bloc { position:relative; border-radius:6px; padding:14px 18px 14px 46px; margin-bottom:24px; }
+  .num { position:absolute; left:14px; top:14px; font-size:18px; font-weight:700; color:#a0a0a0; }
+  .rejet { outline:1px dashed #b04a3a; }
+  .att { font-size:10px; color:#b04a3a; margin-top:9px; font-family:monospace; }
+
+  /* Gravure Apple : gris sur gris, aucun contraste franc */
+  .gravure { background:linear-gradient(#d6d6d6,#c2c2c2); }
+  .gravure .g1 { font-size:15px; color:#8a8a8a; letter-spacing:.4px; }
+  .gravure .g2 { font-size:13px; color:#8f8f8f; letter-spacing:.6px; margin-top:3px; }
+  .gravure .g3 { font-size:11px; color:#9a9a9a; margin-top:3px; }
+
+  /* Étiquette PC : encre noire sur fond clair, bien plus lisible qu'une gravure */
+  .etiquette { background:#f5f5f1; border:1px solid #c8c8c4; }
+  .etiquette .e1 { font-size:11px; color:#444; text-transform:uppercase; letter-spacing:.8px; }
+  .etiquette .e2 { font-size:15px; color:#111; font-family:"Courier New",monospace;
+                   letter-spacing:1px; margin-top:3px; font-weight:700; }
+  .etiquette .e3 { font-size:10px; color:#777; margin-top:4px; }
+  .barres { height:20px; margin-top:6px; width:170px;
+            background:repeating-linear-gradient(90deg,#111 0 2px,transparent 2px 4px,
+                       #111 4px 5px,transparent 5px 9px,#111 9px 12px,transparent 12px 14px); }
+  @media print { .att { display:none } }
+</style>
+<h3>Planche mixte — Apple, Dell, HP, Lenovo, Asus</h3>
+<p class="intro">Cadrer un bloc à la fois. Les blocs cerclés de rouge doivent être REFUSÉS : c'est le refus
+qui est testé, pas la lecture.<br>
+Le nom du modèle sert aussi à la détection automatique de la marque — c'est lui qui dit
+au lecteur qu'un « S/N » ThinkPad fait 8 caractères et un « S/N » Asus quinze.</p>
+  <div class="bloc gravure">
+    <div class="num">1</div>
+    <div class="g1">MacBook Air</div>
+    <div class="g2">Model A2337&nbsp;&nbsp;EMC 3598&nbsp;&nbsp;Serial C02W61JZQ6LC&nbsp;&nbsp;20.0V⎓3.0A</div>
+    <div class="g3">Designed by Apple in California&nbsp;&nbsp;Assembled in China</div>
+    <div class="att">attendu : C02W61JZQ6LC</div>
+  </div>
+  <div class="bloc gravure">
+    <div class="num">2</div>
+    <div class="g1">MacBook Air</div>
+    <div class="g2">Model A2337&nbsp;&nbsp;EMC 3598&nbsp;&nbsp;S/N HQ7Y9WJ2A3&nbsp;&nbsp;20.0V⎓3.0A</div>
+    <div class="g3">Designed by Apple in California&nbsp;&nbsp;Assembled in China</div>
+    <div class="att">attendu : HQ7Y9WJ2A3</div>
+  </div>
+  <div class="bloc etiquette">
+    <div class="num">3</div>
+    <div class="e1">Latitude 5420</div>
+    <div class="barres"></div>
+    <div class="e2">Service Tag 5R8ZQ72</div>
+    <div class="e3">Made in China</div>
+    <div class="att">attendu : 5R8ZQ72</div>
+  </div>
+  <div class="bloc etiquette">
+    <div class="num">4</div>
+    <div class="e1">Precision 3560</div>
+    <div class="barres"></div>
+    <div class="e2">S/T 7GH2K41</div>
+    <div class="e3">Made in China</div>
+    <div class="att">attendu : 7GH2K41</div>
+  </div>
+  <div class="bloc etiquette">
+    <div class="num">5</div>
+    <div class="e1">ProBook 450 G8</div>
+    <div class="barres"></div>
+    <div class="e2">S/N 5CD1234ABC</div>
+    <div class="e3">Made in China</div>
+    <div class="att">attendu : 5CD1234ABC</div>
+  </div>
+  <div class="bloc etiquette">
+    <div class="num">6</div>
+    <div class="e1">EliteBook 840 G8</div>
+    <div class="barres"></div>
+    <div class="e2">Serial 8CG2051XYZ</div>
+    <div class="e3">Made in China</div>
+    <div class="att">attendu : 8CG2051XYZ</div>
+  </div>
+  <div class="bloc etiquette">
+    <div class="num">7</div>
+    <div class="e1">ThinkPad T14 Gen 2</div>
+    <div class="barres"></div>
+    <div class="e2">S/N PF3WJ3X2</div>
+    <div class="e3">Made in China</div>
+    <div class="att">attendu : PF3WJ3X2</div>
+  </div>
+  <div class="bloc etiquette">
+    <div class="num">8</div>
+    <div class="e1">ThinkPad X1 Carbon</div>
+    <div class="barres"></div>
+    <div class="e2">S/N R90JM9T7</div>
+    <div class="e3">Made in China</div>
+    <div class="att">attendu : R90JM9T7</div>
+  </div>
+  <div class="bloc etiquette">
+    <div class="num">9</div>
+    <div class="e1">ASUS ExpertBook B1</div>
+    <div class="barres"></div>
+    <div class="e2">S/N K9N0KU01D124956</div>
+    <div class="e3">Made in China</div>
+    <div class="att">attendu : K9N0KU01D124956</div>
+  </div>
+  <div class="bloc etiquette rejet">
+    <div class="num">10</div>
+    <div class="e1">ThinkPad T14</div>
+    <div class="barres"></div>
+    <div class="e2">SN PF3WJ3X2</div>
+    <div class="e3">Made in China</div>
+    <div class="att">REFUS attendu — SN nu sans separateur</div>
+  </div>
+  <div class="bloc etiquette rejet">
+    <div class="num">11</div>
+    <div class="e1">Latitude 5420</div>
+    <div class="barres"></div>
+    <div class="e2">Service Tag YM0A26L3RT9B</div>
+    <div class="e3">Made in China</div>
+    <div class="att">REFUS attendu — 12 sur ancre courte, ne doit pas etre tronque</div>
+  </div>
+  <div class="bloc gravure rejet">
+    <div class="num">12</div>
+    <div class="g1">MacBook Pro</div>
+    <div class="g2">Model A2338&nbsp;&nbsp;EMC 3598&nbsp;&nbsp;C17P34X9WD5T&nbsp;&nbsp;20.0V⎓3.0A</div>
+    <div class="g3">Designed by Apple in California&nbsp;&nbsp;Assembled in China</div>
+    <div class="att">REFUS attendu — numero nu sans mot-cle</div>
+  </div>

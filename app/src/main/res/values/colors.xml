@@ -1,0 +1,21 @@
+<resources>
+    <!-- Palette reprise de l'icône : ambre sur anthracite. L'ambre est la
+         couleur du cadre de visée — en faire la couleur d'action relie ce
+         qu'on touche à ce qu'on vise. -->
+    <color name="ambre">#FFCC00</color>
+    <color name="ambre_sourd">#8A6D00</color>
+
+    <color name="fond">#101317</color>
+    <color name="fond_barre">#171B21</color>
+    <color name="separateur">#232830</color>
+    <color name="texte">#E6E9EE</color>
+    <color name="texte_faible">#7C8595</color>
+
+    <!-- États de lecture. « À reprendre » vire au terracotta et non à l'orange :
+         trop proche de l'ambre, il se confondrait avec la couleur d'action. -->
+    <color name="ok">#4CAF7D</color>
+    <!-- Lu par la machine, pas encore regardé : gris ardoise, qui ne dit rien
+         plutôt qu'un vert qui affirmerait. -->
+    <color name="lu">#5A6373</color>
+    <color name="a_reprendre">#E5705A</color>
+</resources>

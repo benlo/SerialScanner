@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- La bonne ligne est en vue, le numéro n'est pas encore lisible : ambre,
+     la couleur de la visée. C'est l'état où resserrer sert à quelque chose. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="@android:color/transparent" />
+    <stroke android:width="3dp" android:color="@color/ambre" />
+    <corners android:radius="6dp" />
+</shape>

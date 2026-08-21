@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Cadrage bon : le trait s'épaissit en plus de virer au vert. À bout de bras,
+     sous une lampe d'atelier, la couleur seule ne se voit pas toujours. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="@android:color/transparent" />
+    <stroke android:width="4dp" android:color="@color/ok" />
+    <corners android:radius="6dp" />
+</shape>

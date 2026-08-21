@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24"
+    android:tint="?attr/colorControlNormal">
+    <!-- Une pile de photos : le lot se photographie d'abord, se lit ensuite -->
+    <path android:pathData="M8,3 L20,3 Q22,3 22,5 L22,15 Q22,17 20,17 L8,17 Q6,17 6,15 L6,5 Q6,3 8,3 Z"
+        android:strokeColor="#FFFFFF" android:strokeWidth="2"
+        android:strokeLineJoin="round" />
+    <path android:pathData="M6,20 L4,20 Q2,20 2,18 L2,7"
+        android:strokeColor="#FFFFFF" android:strokeWidth="2"
+        android:strokeLineCap="round" android:strokeLineJoin="round" />
+    <path android:pathData="M9,13 L12,9 L15,13 L17,11 L19,13"
+        android:strokeColor="#FFFFFF" android:strokeWidth="2"
+        android:strokeLineCap="round" android:strokeLineJoin="round" />
+</vector>

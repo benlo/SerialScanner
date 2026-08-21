@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Contenu maintenu entre 27 et 81 : au-delà, le masque du lanceur rogne.
+     Le cadre de visée et la ligne gravée sont les deux signes du produit. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Les quatre coins du viseur -->
+    <path
+        android:pathData="M28,44 L28,34 Q28,28 34,28 L44,28"
+        android:strokeColor="#FFCC00"
+        android:strokeWidth="5"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+    <path
+        android:pathData="M80,44 L80,34 Q80,28 74,28 L64,28"
+        android:strokeColor="#FFCC00"
+        android:strokeWidth="5"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+    <path
+        android:pathData="M28,64 L28,74 Q28,80 34,80 L44,80"
+        android:strokeColor="#FFCC00"
+        android:strokeWidth="5"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+    <path
+        android:pathData="M80,64 L80,74 Q80,80 74,80 L64,80"
+        android:strokeColor="#FFCC00"
+        android:strokeWidth="5"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+
+    <!-- La ligne du numéro : des blocs plutôt que des lettres, lisibles à 48dp -->
+    <path android:pathData="M36,46h6v10h-6z" android:fillColor="#FFE9EDF3" />
+    <path android:pathData="M46,46h4v10h-4z" android:fillColor="#FFE9EDF3" />
+    <path android:pathData="M54,46h6v10h-6z" android:fillColor="#FFE9EDF3" />
+    <path android:pathData="M64,46h4v10h-4z" android:fillColor="#FFE9EDF3" />
+    <path android:pathData="M36,61h32v3h-32z" android:fillColor="#FF6F7A8B" />
+</vector>

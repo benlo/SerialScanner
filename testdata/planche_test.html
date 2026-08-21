@@ -1,0 +1,87 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Planche de test MacSN</title>
+<style>
+  body { background:#c9c9c9; font-family:"Helvetica Neue",Arial,sans-serif; margin:24px; }
+  h3 { color:#555; font-size:13px; font-weight:600; }
+  .bloc { position:relative; background:linear-gradient(#d6d6d6,#c2c2c2); border-radius:6px;
+          padding:14px 18px 14px 46px; margin-bottom:26px; }
+  .bloc.rejet { outline:1px dashed #b04a3a; }
+  .num { position:absolute; left:14px; top:14px; font-size:18px; color:#a8a8a8; font-weight:700; }
+  .l1 { font-size:15px; color:#8a8a8a; letter-spacing:.4px; }
+  .l2 { font-size:13px; color:#8f8f8f; letter-spacing:.6px; margin-top:3px; }
+  .l3 { font-size:11px; color:#9a9a9a; margin-top:3px; }
+  .att { font-size:10px; color:#b04a3a; margin-top:8px; font-family:monospace; }
+  @media print { .att { display:none } }
+</style>
+<h3>Planche de test MacSN — cadrer un seul bloc à la fois</h3>
+  <div class="bloc">
+    <div class="num">1</div>
+    <div class="l1">MacBook Air</div>
+    <div class="l2">Model A2337&nbsp;&nbsp;EMC 3598&nbsp;&nbsp;Serial C02W61JZQ6LC&nbsp;&nbsp;20.0V⎓3.0A</div>
+    <div class="l3">Designed by Apple in California&nbsp;&nbsp;Assembled in China</div>
+    <div class="att">attendu : C02W61JZQ6LC</div>
+  </div>
+  <div class="bloc">
+    <div class="num">2</div>
+    <div class="l1">MacBook Air</div>
+    <div class="l2">Model A2337&nbsp;&nbsp;EMC 3598&nbsp;&nbsp;Serial C02W61F3Q6LC&nbsp;&nbsp;20.0V⎓3.0A</div>
+    <div class="l3">Designed by Apple in California&nbsp;&nbsp;Assembled in China</div>
+    <div class="att">attendu : C02W61F3Q6LC</div>
+  </div>
+  <div class="bloc">
+    <div class="num">3</div>
+    <div class="l1">MacBook Pro</div>
+    <div class="l2">Model A1502&nbsp;&nbsp;EMC 2835&nbsp;&nbsp;Serial C02E89R1DCUK&nbsp;&nbsp;20.0V⎓4.25A</div>
+    <div class="l3">Designed by Apple in California&nbsp;&nbsp;Assembled in China</div>
+    <div class="att">attendu : C02E89R1DCUK</div>
+  </div>
+  <div class="bloc">
+    <div class="num">4</div>
+    <div class="l1">MacBook Air</div>
+    <div class="l2">Model A2179&nbsp;&nbsp;EMC 3302&nbsp;&nbsp;Serial FVFJW2A8Q05Y&nbsp;&nbsp;20.0V⎓3.0A</div>
+    <div class="l3">Designed by Apple in California&nbsp;&nbsp;Assembled in China</div>
+    <div class="att">attendu : FVFJW2A8Q05Y</div>
+  </div>
+  <div class="bloc">
+    <div class="num">5</div>
+    <div class="l1">MacBook Pro</div>
+    <div class="l2">Model A2338&nbsp;&nbsp;EMC 3578&nbsp;&nbsp;Serial C17P34X9WD5T&nbsp;&nbsp;20.0V⎓3.0A</div>
+    <div class="l3">Designed by Apple in California&nbsp;&nbsp;Assembled in China</div>
+    <div class="att">attendu : C17P34X9WD5T</div>
+  </div>
+  <div class="bloc">
+    <div class="num">6</div>
+    <div class="l1">MacBook Pro</div>
+    <div class="l2">Model A2141&nbsp;&nbsp;EMC 3347&nbsp;&nbsp;Serial DGKX72C6A9FM&nbsp;&nbsp;20.0V⎓4.3A</div>
+    <div class="l3">Designed by Apple in California&nbsp;&nbsp;Assembled in China</div>
+    <div class="att">attendu : DGKX72C6A9FM</div>
+  </div>
+  <div class="bloc rejet">
+    <div class="num">7</div>
+    <div class="l1">MacBook Pro</div>
+    <div class="l2">Model A1286&nbsp;&nbsp;EMC 2325&nbsp;&nbsp;Serial W8094BQ7HTX&nbsp;&nbsp;18.5V⎓4.6A</div>
+    <div class="l3">Designed by Apple in California&nbsp;&nbsp;Assembled in China</div>
+    <div class="att">doit être REFUSÉ — 11 caractères</div>
+  </div>
+  <div class="bloc">
+    <div class="num">8</div>
+    <div class="l1">MacBook Air</div>
+    <div class="l2">Model A2681&nbsp;&nbsp;EMC 4074&nbsp;&nbsp;Serial HQ7Y9WJ2A3&nbsp;&nbsp;20.0V⎓3.0A</div>
+    <div class="l3">Designed by Apple in California&nbsp;&nbsp;Assembled in China</div>
+    <div class="att">attendu : HQ7Y9WJ2A3</div>
+  </div>
+  <div class="bloc">
+    <div class="num">9</div>
+    <div class="l1">MacBook Air</div>
+    <div class="l2">Model A1932&nbsp;&nbsp;EMC 3184&nbsp;&nbsp;Serial C02U48T5PU23&nbsp;&nbsp;20.0V⎓3.0A</div>
+    <div class="l3">Designed by Apple in California&nbsp;&nbsp;Assembled in China</div>
+    <div class="att">attendu : C02U48T5PU23</div>
+  </div>
+  <div class="bloc">
+    <div class="num">10</div>
+    <div class="l1">MacBook Pro</div>
+    <div class="l2">Model A2442&nbsp;&nbsp;EMC 3650&nbsp;&nbsp;Serial YM0A26L3RT9B&nbsp;&nbsp;20.0V⎓3.0A</div>
+    <div class="l3">Designed by Apple in California&nbsp;&nbsp;Assembled in China</div>
+    <div class="att">attendu : YM0A26L3RT9B</div>
+  </div>

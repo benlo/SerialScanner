@@ -1,0 +1,9 @@
+# Fins de ligne normalisées : le dépôt stocke en LF, Windows travaille en CRLF.
+* text=auto eol=lf
+*.bat text eol=crlf
+# gradlew doit rester en LF, sinon il ne s'exécute pas sous Linux ni macOS.
+gradlew text eol=lf
+*.jar binary
+*.png binary
+*.jpg binary
+*.jks binary

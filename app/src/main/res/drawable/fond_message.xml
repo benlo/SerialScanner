@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Opaque et bordé : posé sur une liste ou sur un flux caméra, un fond
+     translucide rend le message illisible juste quand il compte. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="@color/fond_barre" />
+    <stroke android:width="1dp" android:color="@color/separateur" />
+    <corners android:radius="12dp" />
+</shape>

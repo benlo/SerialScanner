@@ -1,0 +1,86 @@
+<resources>
+    <string name="app_name">SerialScanner</string>
+
+    <!-- Lots -->
+    <string name="titre_lots">Lots d\'audit</string>
+    <string name="titre_nouveau_lot">Nouveau lot</string>
+    <string name="action_nouveau_lot">Nouveau lot</string>
+    <string name="lot_nom_defaut">Lot du %1$s</string>
+    <string name="lot_nom_marque">%1$s du %2$s</string>
+    <string name="titre_marque">Marque du parc</string>
+    <string name="marque_auto">Détecter sur l\'étiquette</string>
+    <string name="action_marque">Changer la marque</string>
+    <string name="lot_detail_fmt">%1$d machines · créé le %2$s</string>
+    <string name="lot_detail_reprise">" · "%1$d" à reprendre"</string>
+    <string name="lots_vide">Aucun lot\n\nCréer un lot par palette, par client ou par journée</string>
+    <string name="menu_points">⋮</string>
+    <string name="action_renommer">Renommer</string>
+    <string name="action_supprimer_lot">Supprimer</string>
+    <string name="action_supprimer">Supprimer</string>
+    <string name="confirm_supprimer_lot">Supprimer ce lot et ses %1$d lectures ? C\'est définitif.</string>
+
+    <!-- Relevé -->
+    <string name="action_import">Importer photos</string>
+    <string name="action_scan">Scan caméra</string>
+    <string name="counter_fmt">%1$d / %2$d contrôlés</string>
+    <string name="review_hint">à saisir</string>
+    <string name="status_review">à reprendre</string>
+    <string name="status_ok">contrôlé</string>
+    <string name="status_lu">lu, non contrôlé</string>
+    <string name="thumb_desc">Vignette de l\'étiquette</string>
+    <string name="empty_state">Aucun relevé\n\nScanner un capot, ou importer les photos du lot</string>
+    <string name="ligne_supprimee">Ligne supprimée</string>
+    <string name="ligne_doublon">doublon — déjà relevé</string>
+    <string name="ligne_proche">proche d\'une autre ligne</string>
+    <string name="proche_de">%1$s ne diffère que d\'un caractère de %2$s — même machine ?</string>
+    <string name="deja_au_lot">%1$s est déjà dans ce lot</string>
+    <string name="action_annuler">Annuler</string>
+
+    <!-- Export -->
+    <string name="action_envoyer">Envoyer le CSV</string>
+    <string name="action_enregistrer">Enregistrer le CSV</string>
+    <string name="export_ok">Export enregistré</string>
+    <string name="export_echec">Export impossible</string>
+    <string name="mail_sujet">Relevé de séries — %1$s</string>
+    <string name="mail_corps">Lot « %1$s » : %2$d machines relevées, %3$d confirmées, %4$d à reprendre.\n\nLe détail est dans le fichier joint.</string>
+
+    <!-- Scan -->
+    <string name="scan_hint">Amener le numéro dans le cadre — il passe au vert, puis deux lectures doivent concorder</string>
+    <string name="scan_incomplet">ligne trouvée — numéro incomplet, resserrer ou changer l\'angle</string>
+    <string name="scan_recentrer">%1$s — recentrer dans le cadre</string>
+    <string name="scan_etape_une">1 ✓ — ne pas bouger, on confirme</string>
+    <string name="scan_etape_deux">1 ✓  2 ✓ — confirmé</string>
+    <string name="scan_searching">…</string>
+    <string name="scan_deja_releve">%1$s déjà relevé — machine suivante</string>
+    <string name="scan_ambiguous">%1$d numéros dans le cadre — resserrer</string>
+    <string name="scan_cancel">Annuler</string>
+    <string name="zoom_auto">A</string>
+    <string name="zoom_1">1×</string>
+    <string name="zoom_2">2×</string>
+    <string name="zoom_4">4×</string>
+    <string name="zoom_6">6×</string>
+    <string name="zoom_etat_auto">auto · %1$s×</string>
+    <string name="zoom_etat_fixe">zoom %1$s× — fixe</string>
+    <string name="supprimer_lecture">Supprimer cette lecture ?</string>
+
+    <!-- Contrôle -->
+    <string name="verif_titre">Contrôle</string>
+    <string name="verif_position">%1$d / %2$d · %3$s</string>
+    <string name="verif_sans_photo">Pas de photo pour cette lecture</string>
+    <string name="verif_confirme">Confirmé</string>
+    <string name="verif_a_reprendre">À reprendre</string>
+    <string name="verif_precedent">◀ Précédent</string>
+    <string name="verif_suivant">Suivant ▶</string>
+    <string name="verif_alerte_vide">numéro absent</string>
+    <string name="verif_alerte_longueur">%1$d caractères, attendu %2$s</string>
+    <string name="verif_alerte_ambigu">contient O ou I — ce format ne les emploie pas</string>
+    <string name="verif_alerte_doublon">déjà relevé dans ce lot</string>
+    <string name="verif_alerte_proche">proche de %1$s — même machine ?</string>
+    <string name="verif_corriger">Corriger en %1$s</string>
+    <string name="controle_fini_titre">Contrôle terminé</string>
+    <string name="controle_fini_ok">Les %1$d lignes du lot ont été contrôlées à la photo.</string>
+    <string name="controle_fini_reste">%1$d lignes contrôlées, dont %2$d à reprendre.</string>
+    <string name="origine_scan">scan</string>
+    <string name="origine_import">import</string>
+    <string name="origine_saisie">saisie</string>
+</resources>
