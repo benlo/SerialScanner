@@ -6,6 +6,35 @@ la liste des numéros sans les taper à la main.
 
 Application Android, hors ligne, sans compte ni serveur.
 
+## Installer
+
+L'APK se télécharge dans les [releases](https://github.com/benlo/SerialScanner/releases/latest),
+s'ouvre sur le téléphone, et c'est tout — pas de magasin, pas de compte.
+
+Deux avertissements à connaître, sans quoi on croit à un problème : Android
+demande d'**autoriser l'installation depuis l'application qui a servi au
+téléchargement** (le navigateur, en général), puis Play Protect signale une
+application *non vérifiée*. C'est le régime normal de ce qui ne vient pas du
+Play Store, pas un symptôme.
+
+- **Android 8.0 (API 26) et au-dessus.** En dessous, l'installation est refusée.
+- **Tout téléphone** : l'APK embarque les quatre architectures (arm64-v8a,
+  armeabi-v7a, x86, x86_64), émulateurs compris.
+- **Aucune dépendance aux services Google.** Le modèle de reconnaissance est
+  dans l'APK : l'app fonctionne sans compte, sans réseau, sur un téléphone
+  dégooglisé. Compter une centaine de mégaoctets installés, le modèle pèse.
+- **Permissions** : caméra pour le scan, vibreur pour le retour à la validation.
+  L'import passe par le sélecteur de photos du système, donc aucun accès au
+  stockage n'est demandé. Les permissions réseau visibles dans le manifeste
+  viennent des bibliothèques ; l'application ne fait aucun appel sortant.
+
+Les versions suivantes s'installent par-dessus en gardant les lots enregistrés,
+tant qu'elles sont signées avec la même clé.
+
+La limite pratique n'est ni la version d'Android ni le modèle de téléphone,
+c'est l'optique : un appareil qui ne fait pas le point à vingt centimètres lira
+mal la gravure. C'est le zoom qui compense, pas l'approche.
+
 ## Le problème
 
 Le numéro est gravé sous le capot : gris sur gris, sur alu brossé, souvent sur
@@ -66,6 +95,17 @@ La logique qui décide d'un numéro — extraction, formats, distances,
 séquencement des lectures — est du Kotlin sans dépendance Android, et testée à
 ce titre. C'est la seule partie du projet où une erreur produit un mauvais
 numéro sans que ça se voie.
+
+### Publier une version
+
+`versionCode` doit monter à chaque fois, sinon Android refuse d'installer
+par-dessus la précédente :
+
+```
+# app/build.gradle.kts : versionCode = 2, versionName = "1.1"
+./gradlew test && ./gradlew assembleRelease
+gh release create v1.1 app/build/outputs/apk/release/app-release.apk
+```
 
 ### Signature release
 
