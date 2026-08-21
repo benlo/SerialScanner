@@ -74,13 +74,41 @@ et seulement s'il voit la photo.
   paliers, retour haptique à la validation.
 - **Import par lot** — sélection multiple depuis la galerie, seconde passe de
   reconnaissance recadrée sur la ligne repérée.
-- **Lots** — un lot par palette ou par journée, marque déclarée à la création
-  (Apple, Dell, HP, Lenovo, Asus), persistés en JSON local.
+- **Lots** — un lot par palette ou par journée, persisté en JSON local, avec sa
+  marque.
 - **Contrôle** — photo pinçable et numéro éditable, alertes de format, de lettre
   proscrite (Apple n'emploie ni `O` ni `I`) et de voisinage (deux lignes à un
   caractère confondable près sont probablement le même capot relevé deux fois).
 - **Export CSV** — `serial;model;emc;source;fiabilite;photo;horodatage`, à
   enregistrer ou à envoyer.
+
+## Plusieurs marques
+
+Un parc de reconditionnement n'est pas homogène : Apple grave, les autres
+collent une étiquette, et les formats n'ont rien à voir. Chaque marque est un
+**profil** — ce que l'étiquette dit d'elle-même (`ThinkPad`, `ProBook`,
+`Latitude`, `ASUS`, `MacBook` ou `EMC`) et le format attendu derrière.
+
+| Profil | Longueur | Indices sur l'étiquette |
+|---|---|---|
+| Apple | 10 ou 12, jamais de `O` ni de `I` | `MacBook`, `EMC` |
+| Dell | 7 (Service Tag) | `DELL`, `SERVICE TAG`, `EXPRESS SERVICE` |
+| Lenovo | 8 | `LENOVO`, `THINKPAD`, `THINKBOOK`, `MTM` |
+| HP | 10 | `PROBOOK`, `ELITEBOOK`, `HEWLETT`, `HP` |
+| Asus | 15 | `ASUS` |
+
+Le mot-clé seul ne suffit pas à trancher : HP, Lenovo et Asus écrivent tous
+`S/N` devant trois longueurs différentes. C'est donc le profil qui commande le
+format, jamais le mot-clé seul, et **on n'accepte jamais l'union de tous les
+formats** — ce serait rouvrir la porte au numéro plausible mais faux.
+
+La marque déclarée à la création du lot prime sur la détection : trente Dell
+d'affilée, autant le dire une fois. Sans déclaration, le profil se déduit de
+l'étiquette, et à défaut c'est Apple qui s'applique, le plus contraint des cinq.
+Ajouter une marque tient en une ligne dans `SerialParser.PROFILS`.
+
+Seul le profil Apple est vérifié sur un parc réel ; les autres longueurs
+viennent de la documentation constructeur.
 
 ## Construire
 
@@ -135,8 +163,6 @@ machines, elles, appartiennent à un client.
 
 - Le format 11 caractères (Mac d'avant 2010) est refusé : l'accepter validerait
   toute lecture de douze tronquée d'un caractère.
-- Les longueurs des formats non-Apple viennent de la documentation constructeur
-  et restent à confirmer sur étiquettes réelles.
 - L'analyse tourne en 1080p ; sur une gravure usée, ML Kit perd parfois un
   caractère. Le refus est correct, mais un cliché pleine résolution au moment de
   la validation ferait mieux.

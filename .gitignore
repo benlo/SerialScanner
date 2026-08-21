@@ -13,3 +13,4 @@ sauvegarde_appareil/
 *.apk
 .kotlin/
 .claude/settings.local.json
+CLAUDE.md
