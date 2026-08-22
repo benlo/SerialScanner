@@ -104,7 +104,11 @@ object Controle {
      * Le caractère manquant, lui, est toujours un défaut de lecture : aucune
      * machine n'a un numéro plus court d'un cran que sa voisine.
      */
-    fun memeMachine(a: String, b: String): Boolean {
+    fun memeMachine(brutA: String, brutB: String): Boolean {
+        // Comparer sans la ponctuation : `PW-0479Q1` et `PW0479Q1` sont la même
+        // machine lue deux fois, pas deux machines à un caractère près.
+        val a = SerialParser.canonique(brutA)
+        val b = SerialParser.canonique(brutB)
         if (a == b || a.isEmpty() || b.isEmpty()) return false
         if (a.length == b.length) {
             val differences = a.indices.filter { a[it] != b[it] }
@@ -128,7 +132,10 @@ object Controle {
     ): List<Alerte> = buildList {
         if (serial.isNullOrBlank()) add(Alerte.VIDE)
         else {
-            if (serial.length !in format.longueurs) add(Alerte.LONGUEUR)
+            // Sur la forme sans ponctuation : un séparateur imprimé fait
+            // partie de l'étiquette, pas du numéro, et `PW-0479Q1` ne doit pas
+            // être signalé trop long parce qu'il porte un tiret.
+            if (SerialParser.canonique(serial).length !in format.longueurs) add(Alerte.LONGUEUR)
             if (ambigu(serial, format)) add(Alerte.AMBIGU)
         }
         if (doublon) add(Alerte.DOUBLON)

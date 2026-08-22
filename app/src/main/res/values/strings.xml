@@ -2,7 +2,7 @@
     <string name="app_name">SerialScanner</string>
 
     <!-- Lots -->
-    <string name="titre_lots">Mes lots</string>
+    <string name="titre_lots">Mes scans</string>
     <string name="titre_nouveau_lot">Nouveau lot</string>
     <string name="action_nouveau_lot">Nouveau lot</string>
     <string name="lot_nom_defaut">Lot du %1$s</string>
@@ -43,6 +43,43 @@
     <string name="export_echec">Export impossible</string>
     <string name="mail_sujet">Relevé de séries — %1$s</string>
     <string name="mail_corps">Lot « %1$s » : %2$d machines relevées, %3$d confirmées, %4$d à reprendre.\n\nLe détail est dans le fichier joint.</string>
+
+    <!-- Gabarit -->
+    <string name="gabarit_etalonne">Lot étalonné sur cette étiquette</string>
+    <string name="titre_gabarits">Gabarits</string>
+    <string name="gabarits_vide">Aucun gabarit
+
+Un gabarit dit où se trouve le numéro sur une étiquette. Étalonné une fois sur un modèle, il sert à tous les lots de ce modèle.</string>
+    <string name="action_gabarits">GABARITS</string>
+    <string name="gabarit_titre_nouveau">Nouveau gabarit</string>
+    <string name="gabarit_titre_modifier">Modifier le gabarit</string>
+    <string name="gabarit_nom_hint">Nom — par exemple Asus X512U</string>
+    <string name="gabarit_photographier">Photographier</string>
+    <string name="gabarit_choisir_photo">Galerie</string>
+    <string name="gabarit_effacer">Effacer</string>
+    <string name="gabarit_enregistrer">Enregistrer</string>
+    <string name="gabarit_consigne_photo">Choisir la photo d\'une étiquette de référence, bien nette et bien cadrée.</string>
+    <string name="gabarit_consigne_ancre">Toucher le <b>mot-clé</b> — SN, S/N, Serial… Pincer pour agrandir.</string>
+    <string name="gabarit_consigne_numero">Toucher maintenant le <b>numéro de série</b>.</string>
+    <string name="gabarit_consigne_pret">Mot-clé « %1$s » · numéro « %2$s ». Nommer et enregistrer.</string>
+    <string name="gabarit_role_ancre">Mot-clé</string>
+    <string name="gabarit_role_numero">Numéro</string>
+    <string name="gabarit_enregistre">Gabarit « %1$s » enregistré</string>
+    <string name="gabarit_aucun_mot">Aucun texte reconnu sur cette photo. En essayer une plus nette ou plus serrée.</string>
+    <string name="gabarit_photo_illisible">Photo illisible</string>
+    <string name="gabarit_cliche_abandonne">Aucun cliché pris</string>
+    <string name="gabarit_invraisemblable">Ces deux mots sont trop éloignés pour être sur la même étiquette</string>
+    <string name="gabarit_detail">%1$s · %2$d caractères · décalage %3$.1f / %4$.1f</string>
+    <string name="gabarit_a_reetalonner">À réétalonner — la longueur du numéro n\'est pas enregistrée</string>
+    <string name="gabarit_utilise">Utilisé par %1$d lot(s) : %2$s.
+
+Le retirer de ces lots avant de le supprimer.</string>
+    <string name="gabarit_confirm_supprimer">Supprimer le gabarit « %1$s » ? C\'est définitif.</string>
+    <string name="gabarit_aucun">Aucun gabarit</string>
+    <string name="titre_gabarit_lot">Gabarit du lot</string>
+    <string name="action_gabarit_lot">Changer le gabarit</string>
+    <string name="gabarit_bibliotheque_vide">Aucun gabarit à affecter — en créer un depuis « Gabarits »</string>
+    <string name="lot_detail_gabarit">" · gabarit "%1$s</string>
 
     <!-- Scan -->
     <string name="scan_hint">Amener le numéro dans le cadre — il passe au vert, puis deux lectures doivent concorder</string>

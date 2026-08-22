@@ -12,6 +12,14 @@ data class Lot(
     /** Nom du profil de lecture, ou [MARQUE_AUTO] pour déduire de l'étiquette.
      *  Déclarer la marque resserre le format attendu, donc écarte du bruit. */
     val marque: String = MARQUE_AUTO,
+    /** Le gabarit affecté à ce lot, par son identifiant. Null quand le lot
+     *  n'en a pas : on retombe alors sur l'ancrage textuel et le profil
+     *  marque, qui marchent sans étalonnage.
+     *
+     *  Une référence et non l'objet : un gabarit se modifie, et la correction
+     *  doit valoir pour tous les lots qui s'en servent. C'est aussi ce qui
+     *  permet de refuser la suppression d'un gabarit encore utilisé. */
+    val gabaritId: String? = null,
     val readings: MutableList<Reading> = mutableListOf()
 ) {
     val valides get() = readings.count { !it.needsReview }
@@ -67,7 +75,12 @@ data class Lot(
             .filterValues { it > 1 }
             .keys
 
-    fun contient(serial: String) = readings.any { it.serial == serial }
+    /** Sans la ponctuation : `PW-0479Q1` et `PW0479Q1` sont le même capot, et
+     *  le relever deux fois sous deux graphies serait un doublon invisible. */
+    fun contient(serial: String) = readings.any {
+        it.serial != null &&
+            SerialParser.canonique(it.serial) == SerialParser.canonique(serial)
+    }
 
     /**
      * Un numéro déjà au lot qui ne diffère de [serial] que d'un caractère, ou

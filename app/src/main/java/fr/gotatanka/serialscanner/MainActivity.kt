@@ -2,8 +2,6 @@ package fr.gotatanka.serialscanner
 
 import android.content.Intent
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
-import android.graphics.Matrix
 import android.net.Uri
 import android.os.Bundle
 import android.util.Log
@@ -16,7 +14,6 @@ import androidx.appcompat.app.AppCompatActivity
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import androidx.core.content.FileProvider
 import androidx.core.view.isVisible
-import androidx.exifinterface.media.ExifInterface
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.DividerItemDecoration
 import androidx.recyclerview.widget.ItemTouchHelper
@@ -72,6 +69,12 @@ class MainActivity : AppCompatActivity() {
         // sous la main.
         val voisin = lot.proche(serial)
         if (voisin != null) message(getString(R.string.proche_de, serial, voisin))
+        // La première machine d'un lot sans gabarit sert d'étalon. Un numéro
+        // douteux ne peut pas étalonner quoi que ce soit : le gabarit qui en
+        // sortirait fausserait ensuite toute la palette.
+        if (voisin == null && !data.getBooleanExtra(ScanActivity.EXTRA_INCERTAIN, false)) {
+            adopterGabarit(data.getStringExtra(ScanActivity.EXTRA_GABARIT_AUTO))
+        }
         ajouter(
             Reading(
                 photo = data.getStringExtra(ScanActivity.EXTRA_PHOTO).orEmpty(),
@@ -83,6 +86,24 @@ class MainActivity : AppCompatActivity() {
                     data.getBooleanExtra(ScanActivity.EXTRA_INCERTAIN, false)
             )
         )
+    }
+
+    /**
+     * Range le gabarit déduit par le scan et l'affecte au lot.
+     *
+     * N'écrase jamais un gabarit existant : un lot s'étalonne une fois. Si
+     * l'étalonnage est mauvais, on le corrige explicitement — on ne le laisse
+     * pas se réécrire à chaque machine, ce qui rendrait le comportement du lot
+     * imprévisible d'une lecture à l'autre.
+     */
+    private fun adopterGabarit(json: String?) {
+        if (lot.gabaritId != null || json.isNullOrEmpty()) return
+        val gabarit = runCatching { GabaritStore.depuisJson(json) }.getOrNull()
+            ?.firstOrNull() ?: return
+        Depot.ajouterGabarit(this, gabarit)
+        lot = lot.copy(gabaritId = gabarit.id)
+        Depot.remplacer(this, lot)
+        message(getString(R.string.gabarit_etalonne))
     }
 
     /** Le contrôle ne rend un résultat qu'une fois le lot entier tranché : c'est
@@ -148,6 +169,11 @@ class MainActivity : AppCompatActivity() {
                         ArrayList(readings.mapNotNull { it.serial })
                     )
                     .putExtra(ScanActivity.EXTRA_MARQUE, lot.marque)
+                    .putExtra(
+                        ScanActivity.EXTRA_GABARIT,
+                        Depot.gabaritDuLot(this, lot)
+                            ?.let { GabaritStore.versJson(listOf(it)) }.orEmpty()
+                    )
             )
         }
         majCompteur()
@@ -315,7 +341,7 @@ class MainActivity : AppCompatActivity() {
         val ligne = texte.textBlocks.flatMap { it.lines }
             .firstOrNull { SerialParser.voitAncre(it.text) } ?: return null
         val cadre = ligne.boundingBox ?: return null
-        val complete = bitmapRedresse(uri) ?: return null
+        val complete = Photos.redresse(this, uri) ?: return null
         return try {
             // Marge généreuse : la boîte de la ligne s'arrête souvent avant les
             // derniers caractères quand ceux-ci sont mal contrastés.
@@ -335,29 +361,6 @@ class MainActivity : AppCompatActivity() {
         } finally {
             complete.recycle()
         }
-    }
-
-    /** L'image dans le repère où ML Kit a rendu ses coordonnées : orientation
-     *  EXIF appliquée, comme le fait `InputImage.fromFilePath`. */
-    private fun bitmapRedresse(uri: Uri): Bitmap? {
-        val brut = contentResolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it) }
-            ?: return null
-        val orientation = contentResolver.openInputStream(uri)?.use {
-            ExifInterface(it).getAttributeInt(
-                ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL
-            )
-        } ?: ExifInterface.ORIENTATION_NORMAL
-        val degres = when (orientation) {
-            ExifInterface.ORIENTATION_ROTATE_90 -> 90f
-            ExifInterface.ORIENTATION_ROTATE_180 -> 180f
-            ExifInterface.ORIENTATION_ROTATE_270 -> 270f
-            else -> 0f
-        }
-        if (degres == 0f) return brut
-        val m = Matrix().apply { postRotate(degres) }
-        val tourne = Bitmap.createBitmap(brut, 0, 0, brut.width, brut.height, m, true)
-        if (tourne !== brut) brut.recycle()
-        return tourne
     }
 
     // --- export ---
@@ -417,9 +420,24 @@ class MainActivity : AppCompatActivity() {
             if (lot.marque == Lot.MARQUE_AUTO) null else lot.marque
     }
 
+    /**
+     * Recalcule les lignes suspectes, **et relie celles qui restent**.
+     *
+     * Le statut d'une ligne ne dépend pas d'elle seule : « doublon » et
+     * « proche » se disent d'une ligne *par rapport aux autres*. Supprimer un
+     * doublon rend donc son jumeau normal, et ajouter une lecture peut rendre
+     * suspecte une ligne déjà à l'écran. Ne notifier que la ligne touchée
+     * laissait toutes les autres afficher l'ancienne vérité.
+     *
+     * Une trentaine de lignes par lot : les relier toutes ne coûte rien, et
+     * c'est la seule règle qui n'oublie aucun cas.
+     */
     private fun majSuspects() {
         suspects.clear()
         suspects.addAll(lot.suspects)
+        // `majSuspects` sert aussi au premier calcul, avant que l'adaptateur
+        // existe : à ce moment-là il n'y a rien à relier.
+        if (::adapter.isInitialized) adapter.notifyItemRangeChanged(0, readings.size)
     }
 
     private fun majCompteur() {

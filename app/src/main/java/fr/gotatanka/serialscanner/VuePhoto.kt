@@ -17,12 +17,12 @@ import androidx.appcompat.widget.AppCompatImageView
  * ou un 6 d'un E ne se fait pas. Sans zoom, l'écran de contrôle ne contrôle
  * rien — c'est la raison d'être de cette vue.
  */
-class VuePhoto @JvmOverloads constructor(
+open class VuePhoto @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null
 ) : AppCompatImageView(context, attrs) {
 
-    private val transfo = Matrix()
+    protected val transfo = Matrix()
     private val bornes = RectF()
     private var ajustee = 1f
     private var echelle = 1f
@@ -50,6 +50,14 @@ class VuePhoto @JvmOverloads constructor(
             ): Boolean {
                 transfo.postTranslate(-dx, -dy)
                 recadrer()
+                return true
+            }
+
+            /** Un appui simple designe, quand une sous-classe en fait
+             *  quelque chose. Confirme, pour ne pas declencher sur la
+             *  premiere moitie d'un double-tap. */
+            override fun onSingleTapConfirmed(e: MotionEvent): Boolean {
+                surTap(e.x, e.y)
                 return true
             }
 
@@ -133,6 +141,10 @@ class VuePhoto @JvmOverloads constructor(
         imageMatrix = transfo
     }
 
+    /** Appui simple, en coordonnees de vue. Sans effet ici : la vue de
+     *  controle ne designe rien, celle du gabarit s'en sert. */
+    protected open fun surTap(x: Float, y: Float) = Unit
+
     override fun performClick(): Boolean = super.performClick()
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
@@ -142,7 +154,7 @@ class VuePhoto @JvmOverloads constructor(
         return true
     }
 
-    private companion object {
+    protected companion object {
         /** Douze fois la vue ajustée : au-delà, la vignette n'a plus de pixels
          *  à montrer, on agrandit du flou. */
         const val MAX = 12f

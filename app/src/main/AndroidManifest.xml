@@ -28,6 +28,17 @@
             android:screenOrientation="portrait"
             android:keepScreenOn="true" />
 
+        <activity
+            android:name=".GabaritsActivity"
+            android:exported="false"
+            android:parentActivityName=".LotsActivity"
+            android:screenOrientation="portrait" />
+        <activity
+            android:name=".GabaritActivity"
+            android:exported="false"
+            android:parentActivityName=".GabaritsActivity"
+            android:screenOrientation="portrait" />
+
         <!-- Partage du CSV vers l'application de messagerie : le fichier reste
              dans le stockage interne, seul le destinataire choisi y accède. -->
         <provider

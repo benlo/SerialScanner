@@ -75,22 +75,35 @@ object SerialParser {
      */
     data class Profil(val nom: String, val indices: Regex, val format: Format)
 
+    /** Le profil de repli, et le seul éprouvé sur un parc réel. */
+    const val NOM_APPLE = "Apple"
+
     val PROFILS = listOf(
         Profil("Dell", Regex("""DELL|SERV[I1]CE\s*TAG|EXPRESS\s*SERV[I1]CE"""), TAG_COURT),
         Profil("Lenovo", Regex("""LENOVO|TH[I1]NKPAD|TH[I1]NKB[O0]{2}K|MTM"""), LENOVO),
         Profil("HP", Regex("""PR[O0]B[O0]{2}K|EL[I1]TEB[O0]{2}K|HEWLETT|HP"""), HP),
         Profil("Asus", Regex("""ASUS"""), ASUS),
-        Profil("Apple", Regex("""APPLE|MACB[O0]{2}K|EMC\s*\d{4}"""), APPLE)
+        Profil(NOM_APPLE, Regex("""APPLE|MACB[O0]{2}K|EMC\s*\d{4}"""), APPLE)
     )
 
     /** Le profil que le texte désigne, ou Apple faute de mieux. */
     fun profil(rawText: String): Profil {
         val up = rawText.uppercase()
         return PROFILS.firstOrNull { it.indices.containsMatchIn(up) }
-            ?: PROFILS.first { it.nom == "Apple" }
+            ?: PROFILS.first { it.nom == NOM_APPLE }
     }
 
     private data class Ancre(val motif: Regex, val format: Format?)
+
+    /**
+     * `SN` nu, mais seulement collé à ses deux-points.
+     *
+     * Asus imprime `SN:` là où les autres écrivent `S/N` — vérifié sur un
+     * X512U. Le `SN` sans ponctuation reste refusé, il traverserait n'importe
+     * quel mot ; c'est le signe de ponctuation qui fait l'étiquette, et le
+     * garde-devant interdit de l'attraper en fin de mot (`...ASN:`).
+     */
+    private const val SN_NU = """(?<![A-Z0-9])SN(?=\s*[:.#])"""
 
     /**
      * Les déclencheurs acceptés.
@@ -103,16 +116,6 @@ object SerialParser {
      * de 12 caractères annoncé par « Service Tag » verrait ses 7 premiers
      * capturés et validés — un numéro tronqué, accepté comme authentique.
      */
-    /**
-     * `SN` nu, mais seulement collé à ses deux-points.
-     *
-     * Asus imprime `SN:` là où les autres écrivent `S/N` — vérifié sur un
-     * X512U. Le `SN` sans ponctuation reste refusé, il traverserait n'importe
-     * quel mot ; c'est le signe de ponctuation qui fait l'étiquette, et le
-     * garde-devant interdit de l'attraper en fin de mot (`...ASN:`).
-     */
-    private const val SN_NU = """(?<![A-Z0-9])SN(?=\s*[:.#])"""
-
     private val ANCRES = listOf(
         // Serial, S/N, S.N, S-N, SN: → longueur donnée par le profil de l'étiquette
         Ancre(
@@ -232,6 +235,41 @@ object SerialParser {
         serial !in allSerials(rawText, impose) &&
             serial in serialsLigneSuivante(rawText, impose)
 
+    /**
+     * Les numéros d'un texte **déjà cadré par un gabarit**.
+     *
+     * Le mot-clé a servi à trouver la zone ; l'exiger une seconde fois dedans
+     * serait contradictoire, puisqu'elle ne contient que le numéro — c'est tout
+     * l'intérêt de la découper. L'ancrage n'a pas disparu pour autant : il est
+     * géométrique, et plus fort que le textuel, puisqu'il exclut le reste de
+     * l'étiquette au lieu de le filtrer après coup.
+     *
+     * Le format reste souverain : sans lui, cette fonction serait exactement le
+     * balayage au format qui a coûté si cher au prototype web.
+     */
+    fun dansZone(rawText: String, format: Format): List<String> {
+        val candidats = mutableListOf<String>()
+        for (brute in rawText.uppercase().lines()) {
+            val ligne = brute.trim()
+            if (ligne.isEmpty()) continue
+            // Les mots de la ligne, **tels qu'imprimés** : c'est cette forme-là
+            // qui sera enregistrée, séparateur compris. `isPlausible` juge sur
+            // la forme sans ponctuation, donc `PW-0479Q1` passe le format
+            // Lenovo à huit caractères sans qu'on ait à le mutiler.
+            candidats += ligne.split(Regex("\\s+")).filter { it.isNotEmpty() }
+            // Puis la ligne entière, pour le cas où ML Kit sépare `PW` et
+            // `0479Q1` en deux mots. Jamais sur une ligne qui porte un mot-clé :
+            // recoller `SN:` au numéro fabriquerait une chaîne plus longue, qui
+            // pourrait tomber pile dans la longueur d'un autre format. Le
+            // mot-clé annonce le numéro, il n'en fait pas partie.
+            if (!voitAncre(ligne)) candidats += ligne
+        }
+        return candidats
+            .map { fixPrefix(it) }
+            .filter { isPlausible(it, format) }
+            .distinct()
+    }
+
     fun voitAncre(rawText: String): Boolean = ANCRE_SEULE.containsMatchIn(rawText.uppercase())
 
     /** Les codes usine Apple sont C02, C17, F5K, FVF, DGK… jamais avec un O. */
@@ -261,7 +299,7 @@ object SerialParser {
      */
     val CONFUSABLES: Set<Char> = CLASSES.keys
 
-    fun normalise(s: String): String = s.map { CLASSES[it] ?: it }.joinToString("")
+    fun normalise(s: String): String = canonique(s).map { CLASSES[it] ?: it }.joinToString("")
 
     /**
      * Le candidat a-t-il la forme annoncée par son mot-clé.
@@ -270,12 +308,26 @@ object SerialParser {
      * constructeur n'aligne trois fois le même caractère, alors qu'un OCR en
      * difficulté le fait volontiers.
      */
+    /**
+     * Le numéro réduit à ses lettres et ses chiffres.
+     *
+     * **La ponctuation est conservée dans ce qu'on enregistre, et ignorée dans
+     * tout ce qu'on calcule.** Certaines étiquettes impriment un séparateur —
+     * `PW-0479Q1` sur un ThinkPad — qui aide à lire mais ne fait pas partie du
+     * numéro : les huit caractères du format Lenovo sont `PW0479Q1`. Enregistrer
+     * la forme recollée reviendrait à écrire dans le CSV du client une chaîne
+     * qui ne figure nulle part sur la machine ; la lui imposer au format
+     * reviendrait à refuser un numéro parfaitement valide.
+     */
+    fun canonique(s: String): String = s.uppercase().filter { it.isLetterOrDigit() }
+
     fun isPlausible(s: String, format: Format = APPLE): Boolean {
-        if (s.length !in format.longueurs) return false
-        if (format.premiereLettre && !s.first().isLetter()) return false
-        if (s.count { it.isDigit() } < format.minChiffres) return false
-        if (s.count { it.isLetter() } < format.minLettres) return false
-        if (TRIPLE.containsMatchIn(s)) return false
+        val c = canonique(s)
+        if (c.length !in format.longueurs) return false
+        if (format.premiereLettre && !c.first().isLetter()) return false
+        if (c.count { it.isDigit() } < format.minChiffres) return false
+        if (c.count { it.isLetter() } < format.minLettres) return false
+        if (TRIPLE.containsMatchIn(c)) return false
         return true
     }
 }

@@ -31,6 +31,7 @@ class LotsActivity : AppCompatActivity() {
         binding.list.addItemDecoration(DividerItemDecoration(this, DividerItemDecoration.VERTICAL))
 
         binding.btnNouveau.setOnClickListener { creer() }
+        binding.btnGabarits.setOnClickListener { startActivity(GabaritsActivity.intent(this)) }
 
         // Au lancement : rattrape tout ce qu'une suppression antérieure, un
         // scan abandonné ou une version précédente a laissé derrière.
@@ -54,21 +55,35 @@ class LotsActivity : AppCompatActivity() {
         startActivity(Intent(this, MainActivity::class.java).putExtra(EXTRA_LOT, lot.id))
     }
 
+    /**
+     * Créer un lot : le gabarit, puis le nom.
+     *
+     * **Plus de question de marque.** Elle ne servait qu'à donner le format —
+     * longueur et alphabet —, et c'est désormais le gabarit qui le porte, relevé
+     * sur le numéro que l'opérateur a lui-même désigné. Une table de marques
+     * devinait ; le gabarit constate.
+     *
+     * Sans gabarit, le lot lit à l'ancrage textuel et retombe sur le format
+     * Apple, le plus contraint et le seul éprouvé sur un parc réel. C'est le
+     * bon défaut : mieux vaut refuser une étiquette inconnue que valider un
+     * numéro douteux. La marque reste changeable par le menu du lot, pour le cas
+     * d'un parc non-Apple qu'on préfère lire sans étalonner.
+     */
     private fun creer() {
-        // La marque d'abord : elle resserre le format attendu, donc écarte du
-        // bruit dès la première lecture. Elle sert aussi à nommer le lot.
-        demanderMarque { marque ->
+        demanderGabarit { gabaritId ->
             val jour = Instant.now().atZone(ZoneId.systemDefault())
                 .format(DateTimeFormatter.ofPattern("dd/MM"))
             // Proposer un nom parlant : dans un atelier, un lot sans nom se
-            // retrouve à deux palettes d'écart le lendemain.
-            val defaut = if (marque == Lot.MARQUE_AUTO) {
+            // retrouve à deux palettes d'écart le lendemain. Le gabarit nomme
+            // mieux qu'une date seule — c'est le modèle de machine.
+            val gabarit = Depot.gabarit(this, gabaritId)
+            val defaut = if (gabarit == null) {
                 getString(R.string.lot_nom_defaut, jour)
             } else {
-                getString(R.string.lot_nom_marque, marque, jour)
+                getString(R.string.lot_nom_marque, gabarit.nom, jour)
             }
             demanderNom(getString(R.string.titre_nouveau_lot), defaut) { nom ->
-                val lot = Depot.creer(this, nom, marque)
+                val lot = Depot.creer(this, nom, Lot.MARQUE_AUTO, gabaritId)
                 adapter.notifyItemInserted(0)
                 rafraichir()
                 ouvrir(lot)
@@ -92,10 +107,32 @@ class LotsActivity : AppCompatActivity() {
             .show()
     }
 
+    /**
+     * Le gabarit du lot, choisi a la creation.
+     *
+     * Passe sans rien demander quand la bibliotheque est vide : poser une
+     * question a un seul choix possible ne renseigne personne. Un lot sans
+     * gabarit lit a l'ancrage textuel, et s'etalonne tout seul s'il y arrive.
+     */
+    private fun demanderGabarit(suite: (String?) -> Unit) {
+        val gabarits = Depot.gabarits(this)
+        if (gabarits.isEmpty()) {
+            suite(null)
+            return
+        }
+        val libelles = (listOf(getString(R.string.gabarit_aucun)) + gabarits.map { it.nom })
+            .toTypedArray()
+        MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.titre_gabarit_lot)
+            .setItems(libelles) { _, i -> suite(if (i == 0) null else gabarits[i - 1].id) }
+            .show()
+    }
+
     private fun menu(lot: Lot) {
         val actions = arrayOf(
             getString(R.string.action_renommer),
             getString(R.string.action_marque),
+            getString(R.string.action_gabarit_lot),
             getString(R.string.action_supprimer_lot)
         )
         MaterialAlertDialogBuilder(this)
@@ -110,7 +147,18 @@ class LotsActivity : AppCompatActivity() {
                         Depot.changerMarque(this, lot.id, marque)
                         adapter.notifyDataSetChanged()
                     }
-                    2 -> confirmerSuppression(lot)
+                    // Un lot vit plus longtemps qu'une idée : le gabarit qui lui
+                    // convient est souvent étalonné après sa création.
+                    2 -> if (Depot.gabarits(this).isEmpty()) {
+                        Ui.message(binding.root, getString(R.string.gabarit_bibliotheque_vide))
+                    } else {
+                        demanderGabarit { gabaritId ->
+                            Depot.remplacer(this, lot.copy(gabaritId = gabaritId))
+                            adapter.notifyDataSetChanged()
+                            rafraichir()
+                        }
+                    }
+                    3 -> confirmerSuppression(lot)
                 }
             }
             .show()

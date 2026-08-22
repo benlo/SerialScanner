@@ -22,6 +22,43 @@ object Photos {
     const val DOSSIER = "photos"
 
     /**
+     * L'image dans le repère où ML Kit rend ses coordonnées : orientation EXIF
+     * appliquée, comme le fait `InputImage.fromFilePath`.
+     *
+     * **À utiliser dès qu'on affiche une photo et qu'on dessine par-dessus ce
+     * que ML Kit y a trouvé.** Une `ImageView` alimentée par l'URI montre le
+     * bitmap brut, alors que ML Kit travaille sur l'image redressée : sur une
+     * photo de téléphone, les deux repères diffèrent d'un quart de tour et les
+     * boîtes tombent à côté des mots. Passer le même bitmap aux deux — affichage
+     * et reconnaissance — est la seule façon de les garder d'accord.
+     */
+    fun redresse(ctx: android.content.Context, uri: android.net.Uri): android.graphics.Bitmap? {
+        val resolver = ctx.contentResolver
+        val brut = resolver.openInputStream(uri)?.use {
+            android.graphics.BitmapFactory.decodeStream(it)
+        } ?: return null
+        val orientation = resolver.openInputStream(uri)?.use {
+            androidx.exifinterface.media.ExifInterface(it).getAttributeInt(
+                androidx.exifinterface.media.ExifInterface.TAG_ORIENTATION,
+                androidx.exifinterface.media.ExifInterface.ORIENTATION_NORMAL
+            )
+        } ?: androidx.exifinterface.media.ExifInterface.ORIENTATION_NORMAL
+        val degres = when (orientation) {
+            androidx.exifinterface.media.ExifInterface.ORIENTATION_ROTATE_90 -> 90f
+            androidx.exifinterface.media.ExifInterface.ORIENTATION_ROTATE_180 -> 180f
+            androidx.exifinterface.media.ExifInterface.ORIENTATION_ROTATE_270 -> 270f
+            else -> 0f
+        }
+        if (degres == 0f) return brut
+        val m = android.graphics.Matrix().apply { postRotate(degres) }
+        val tourne = android.graphics.Bitmap.createBitmap(
+            brut, 0, 0, brut.width, brut.height, m, true
+        )
+        if (tourne !== brut) brut.recycle()
+        return tourne
+    }
+
+    /**
      * Le nom du fichier cité par une lecture, ou null si elle ne cite pas un
      * fichier de ce dossier.
      *

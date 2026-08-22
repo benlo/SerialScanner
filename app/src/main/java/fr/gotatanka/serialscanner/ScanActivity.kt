@@ -36,6 +36,7 @@ import com.google.mlkit.vision.text.TextRecognition
 import com.google.mlkit.vision.text.latin.TextRecognizerOptions
 import fr.gotatanka.serialscanner.databinding.ActivityScanBinding
 import java.util.Locale
+import java.util.UUID
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
@@ -84,6 +85,20 @@ class ScanActivity : AppCompatActivity() {
     @Volatile private var dernierIndice = 0L
     private var palier = -1
     private var zoomMax = 1f
+
+    /** Le gabarit du lot, s'il en a un. Null : on lit comme avant, à
+     *  l'ancrage textuel — le chemin éprouvé sur les capots Apple. */
+    private val gabarit: Gabarit? by lazy {
+        runCatching {
+            GabaritStore.depuisJson(intent.getStringExtra(EXTRA_GABARIT) ?: "[]").firstOrNull()
+        }.getOrNull()
+    }
+
+    /** Le gabarit déduit pendant cette session, à rendre à l'appelant. */
+    @Volatile private var gabaritDeduit: Gabarit? = null
+
+    /** Déduction en attente de confirmation par une seconde trame. */
+    @Volatile private var gabaritCandidat: Gabarit? = null
 
     /** Profil de lecture imposé par le lot, null si détection sur l'étiquette. */
     private val profil: SerialParser.Profil? by lazy {
@@ -255,12 +270,34 @@ class ScanActivity : AppCompatActivity() {
         val image = InputImage.fromMediaImage(media, rotation)
         recognizer.process(image)
             .addOnSuccessListener { result ->
-                val texte = textInRoi(result, roi)
-                Log.d(TAG, "cadre ${proxy.width}x${proxy.height} → «${texte.replace(SEPARATEUR, " ⏎ ")}»")
+                // Avec un gabarit, c'est la zone projetée depuis le mot-clé qui
+                // filtre le texte, et non plus le viseur. Tout ce qui tombe
+                // hors d'elle n'est pas analysé — la garantie `24M` et la date
+                // `MFD:` cessent d'être des candidats, non parce qu'elles
+                // échouent à un test mais parce qu'on ne les regarde pas.
+                val mots = motsDe(result)
+                if (gabarit == null) etalonner(mots)
+                // Le gabarit reçu, ou celui qu'on vient de déduire : l'étalonnage
+                // prend effet dans la session même, sinon un lot dont la lecture
+                // textuelle échoue ne pourrait jamais s'amorcer.
+                val zone = (gabarit ?: gabaritDeduit)?.let { g ->
+                    mots.firstOrNull { SerialParser.voitAncre(it.texte) }
+                        ?.let { g.projeter(it.boite) }
+                }
+                val texte = textInRoi(result, zone ?: roi)
+                Log.d(
+                    TAG,
+                    "cadre ${proxy.width}x${proxy.height}" +
+                        (zone?.let { " gabarit→$it" } ?: "") +
+                        " → «${texte.replace(SEPARATEUR, " ⏎ ")}»"
+                )
                 // La ligne gravée est en vue même si le numéro ne se lit pas
                 // encore : c'est ce qui distingue « viser à côté » de « viser
                 // juste mais trop loin ».
-                val surLaLigne = SerialParser.voitAncre(texte)
+                // Avec un gabarit, la zone n'existe que parce que le mot-cle
+                // a ete trouve : on est sur la ligne par construction, meme si
+                // le texte decoupe ne contient plus le mot-cle.
+                val surLaLigne = zone != null || SerialParser.voitAncre(texte)
                 if (surLaLigne) {
                     dernierIndice = SystemClock.elapsedRealtime()
                 }
@@ -270,13 +307,22 @@ class ScanActivity : AppCompatActivity() {
                 // même erreur. C'est tout l'intérêt du délai.
                 if (SystemClock.elapsedRealtime() < prochaineLectureA) return@addOnSuccessListener
 
-                val serials = SerialParser.candidats(texte, profil)
+                // Le gabarit prime : sa longueur vient du numéro que l'opérateur
+                // a désigné sur l'étiquette, pas d'une table de marques. C'est
+                // ce qui rend la déclaration de marque inutile — et ce qui ouvre
+                // l'app aux étiquettes dont aucun profil ne connaît le format.
+                val format = gabarit?.format ?: SerialParser.formatPour(texte, profil)
+                val serials = if (zone != null) SerialParser.dansZone(texte, format)
+                else SerialParser.candidats(texte, profil)
                 if (serials.size > 1) {
                     // Plusieurs capots dans le cadre : on ne devine pas lequel est visé.
                     cadrage(faute, getString(R.string.scan_ambiguous, serials.size))
                     return@addOnSuccessListener
                 }
-                val parsed = SerialParser.parse(texte, profil)
+                // Dans une zone de gabarit, le modele et l'EMC sont hors cadre
+                // par construction : seul le numero en sort.
+                val parsed = if (zone != null) SerialParser.Reading(serials.singleOrNull(), null, null)
+                else SerialParser.parse(texte, profil)
                 val candidate = parsed.serial
                 if (candidate == null) {
                     // Ancre vue mais rien de plausible derrière : un caractère
@@ -301,8 +347,13 @@ class ScanActivity : AppCompatActivity() {
                 // le cadre. À cheval sur le bord, un caractère peut manquer
                 // sans que rien ne le dise — et une lecture tronquée qui passe
                 // le format est un faux numéro d'aspect parfait.
+                // Avec un gabarit, c'est la geometrie qui place le numero, pas
+                // l'operateur : exiger qu'il tienne dans la bande du viseur
+                // serait intenable. Il doit tenir dans l'image visible, ce qui
+                // suffit a garantir qu'aucun caractere n'est coupe au bord.
+                val cadreExige = if (zone != null) visible else roi
                 val boite = boiteDuNumero(result, candidate)
-                if (boite == null || !roi.contientEntierement(boite)) {
+                if (boite == null || !cadreExige.contientEntierement(boite)) {
                     cadrage(Cadrage.LIGNE, getString(R.string.scan_recentrer, candidate))
                     return@addOnSuccessListener
                 }
@@ -314,7 +365,7 @@ class ScanActivity : AppCompatActivity() {
                 // sur la même gravure se trompent de la même façon.
                 // Un numéro lu sous le mot-clé plutôt que sur sa ligne tient à
                 // un garde-fou plus mince : il part en vérification.
-                val ambigu = Controle.ambigu(candidate, SerialParser.formatPour(texte, profil)) ||
+                val ambigu = Controle.ambigu(candidate, format) ||
                     SerialParser.horsLigne(texte, candidate, profil)
                 val enSequence = sequence.enCours
                 when (val etape = sequence.proposer(candidate, maintenant)) {
@@ -369,37 +420,6 @@ class ScanActivity : AppCompatActivity() {
      * veut être sûr. ML Kit le rend en un mot le plus souvent, parfois en
      * plusieurs : on recompose donc les mots consécutifs d'une même ligne.
      */
-    private fun boiteDuNumero(result: Text, serial: String): ScanRoi.Box? {
-        for (ligne in result.textBlocks.flatMap { it.lines }) {
-            val mots = ligne.elements
-            for (debut in mots.indices) {
-                var texte = ""
-                for (fin in debut until mots.size) {
-                    texte += mots[fin].text.uppercase()
-                    if (texte.length > serial.length) break
-                    if (SerialParser.fixPrefix(texte) != serial) continue
-                    val cadres = (debut..fin).mapNotNull { mots[it].boundingBox }
-                    if (cadres.isEmpty()) break
-                    return ScanRoi.Box(
-                        cadres.minOf { it.left },
-                        cadres.minOf { it.top },
-                        cadres.maxOf { it.right },
-                        cadres.maxOf { it.bottom }
-                    )
-                }
-            }
-        }
-        Log.d(TAG, "numéro $serial introuvable dans les mots reconnus")
-        return null
-    }
-
-    /**
-     * Tente la confirmation à un palier élargi.
-     *
-     * Élargir, et non serrer : le numéro reste dans le cadre à coup sûr. S'il
-     * y devient illisible, [replierSiPalierMuet] ramène au palier de départ
-     * après un délai borné et la confirmation se fait alors sur le temps.
-     */
     private fun tenterAutrePalier() {
         zoomPremiere = zoomCourant
         autoAvantSequence = autoZoom
@@ -437,13 +457,64 @@ class ScanActivity : AppCompatActivity() {
         appliquerZoom(zoomPremiere)
     }
 
+    private fun boiteDuNumero(result: Text, serial: String): ScanRoi.Box? {
+        val lignes = result.textBlocks.flatMap { it.lines }.map { ligne ->
+            ligne.elements.mapNotNull { e ->
+                e.boundingBox?.let {
+                    Gabarit.Mot(e.text, ScanRoi.Box(it.left, it.top, it.right, it.bottom))
+                }
+            }
+        }
+        return Recompose.boite(lignes, serial)
+            ?: null.also { Log.d(TAG, "numero " + serial + " introuvable dans les mots reconnus") }
+    }
+
     /**
-     * Le texte des seules lignes dont le centre tombe dans le cadre.
+     * Cherche le gabarit du lot dans la trame, tant qu'il n'en a pas.
      *
-     * Filtrer par ligne et non par bloc : ML Kit regroupe volontiers deux
-     * capots voisins dans un même bloc, ce qui ferait rentrer dans le cadre
-     * un numéro que l'opérateur ne vise pas.
+     * Deux trames concordantes avant d'adopter, dans l'esprit de la double
+     * lecture — une déduction unique ne prouve rien. Mais c'est bien la
+     * **géométrie** qu'on confirme, pas les caractères : un numéro mal lu a
+     * quand même la bonne boîte, et c'est ce qui autorise à étalonner sur une
+     * lecture non confirmée. Sans ça, un lot dont la lecture textuelle échoue
+     * — étiquette dont le numéro sort avant son mot-clé — ne pourrait jamais
+     * s'étalonner, précisément là où le gabarit sert le plus.
      */
+    private fun etalonner(mots: List<Gabarit.Mot>) {
+        if (gabaritDeduit != null) return
+        val propose = Gabarit.auto(
+            UUID.randomUUID().toString(),
+            intent.getStringExtra(EXTRA_MARQUE)?.takeIf { it != Lot.MARQUE_AUTO }.orEmpty(),
+            mots,
+            SerialParser.formatPour(mots.joinToString(" ") { it.texte }, profil)
+        ) ?: return
+        val precedent = gabaritCandidat
+        if (precedent != null && precedent.proche(propose)) {
+            gabaritDeduit = precedent
+            Log.d(TAG, "gabarit adopté : $precedent")
+        } else {
+            gabaritCandidat = propose
+            Log.d(TAG, "gabarit proposé : $propose")
+        }
+    }
+
+    /**
+     * Les mots reconnus et leurs boîtes.
+     *
+     * Au grain du mot et non de la ligne : le gabarit raisonne sur la boîte du
+     * mot-clé seul, alors qu'une ligne peut porter `SN:` *et* la garantie, ce
+     * qui doublerait sa largeur et fausserait l'unité d'échelle.
+     */
+    private fun motsDe(result: Text): List<Gabarit.Mot> =
+        result.textBlocks
+            .flatMap { it.lines }
+            .flatMap { it.elements }
+            .mapNotNull { e ->
+                e.boundingBox?.let {
+                    Gabarit.Mot(e.text, ScanRoi.Box(it.left, it.top, it.right, it.bottom))
+                }
+            }
+
     private fun textInRoi(result: Text, roi: ScanRoi.Box): String =
         result.textBlocks
             .flatMap { it.lines }
@@ -467,6 +538,7 @@ class ScanActivity : AppCompatActivity() {
             putExtra(EXTRA_EMC, parsed.emc)
             putExtra(EXTRA_INCERTAIN, incertain)
             putExtra(EXTRA_PHOTO, photo)
+            gabaritDeduit?.let { putExtra(EXTRA_GABARIT_AUTO, GabaritStore.versJson(listOf(it))) }
         })
         // Deux impulsions pour une lecture incertaine : au poste, la différence
         // se sent sans regarder l'écran.
@@ -524,6 +596,16 @@ class ScanActivity : AppCompatActivity() {
         const val EXTRA_PHOTO = "photo"
         const val EXTRA_DEJA_RELEVES = "dejaReleves"
         const val EXTRA_MARQUE = "marque"
+
+        /** Le gabarit du lot, sérialisé avec le JSON de [GabaritStore] — un
+         *  extra plutôt qu'un accès au dépôt, comme la marque : cet écran ne
+         *  connaît pas le lot, il reçoit ce qu'il lui faut et rend ce qu'il a
+         *  trouvé. */
+        const val EXTRA_GABARIT = "gabarit"
+
+        /** Le gabarit déduit tout seul de la première lecture d'un lot qui n'en
+         *  avait pas. L'appelant décide s'il le garde. */
+        const val EXTRA_GABARIT_AUTO = "gabaritAuto"
 
         /** Du plan large au serré : la première position sert au cadrage, les
          *  suivantes cherchent la finesse de gravure. */

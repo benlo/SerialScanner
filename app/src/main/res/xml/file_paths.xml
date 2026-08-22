@@ -3,4 +3,8 @@
     <!-- Le CSV à joindre au mail : écrit dans le stockage interne, partagé au
          seul destinataire choisi, le temps de l'envoi. -->
     <files-path name="exports" path="exports/" />
+
+    <!-- Le cliché de référence d'un gabarit : l'appareil photo du système écrit
+         ici, l'app relit, et le fichier ne sert qu'à l'étalonnage. -->
+    <cache-path name="references" path="references/" />
 </paths>

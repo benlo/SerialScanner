@@ -55,6 +55,7 @@ object LotStore {
                     .put("nom", lot.nom)
                     .put("cree", lot.cree)
                     .put("marque", lot.marque)
+                    .put("gabarit", lot.gabaritId ?: JSONObject.NULL)
                     .put("lectures", lignes)
             )
         }
@@ -88,8 +89,11 @@ object LotStore {
             }
             // Lot enregistré avant l'arrivée des marques : détection par défaut.
             val marque = o.optString("marque").ifEmpty { Lot.MARQUE_AUTO }
+            // Une simple référence : le gabarit lui-même vit dans sa propre
+            // bibliothèque, pour qu'une correction vaille pour tous ses lots.
+            val gabaritId = o.optStringOuNull("gabarit")
             lots.add(
-                Lot(o.getString("id"), o.getString("nom"), o.optLong("cree", 0L), marque, readings)
+                Lot(o.getString("id"), o.getString("nom"), o.optLong("cree", 0L), marque, gabaritId, readings)
             )
         }
         return lots

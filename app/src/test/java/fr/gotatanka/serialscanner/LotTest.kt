@@ -12,7 +12,7 @@ class LotTest {
         Reading("", Origine.SCAN, serial, null, null, aVerifier, controle, timestamp = 0L)
 
     private fun lot(vararg lectures: Reading) =
-        Lot("id", "Palette 12", 0L, Lot.MARQUE_AUTO, lectures.toMutableList())
+        Lot("id", "Palette 12", 0L, Lot.MARQUE_AUTO, null, lectures.toMutableList())
 
     /** Cas réel : la même ligne rescannée trois fois d'affilée. */
     @Test fun `un numero releve plusieurs fois est un doublon`() {

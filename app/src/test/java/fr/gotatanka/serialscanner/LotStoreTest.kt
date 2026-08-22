@@ -55,4 +55,11 @@ class LotStoreTest {
     @Test fun `la marque survit a l'aller-retour`() {
         assertEquals("Lenovo", LotStore.depuisJson(LotStore.versJson(listOf(lot)))[0].marque)
     }
+
+    /** L'affectation d'un gabarit est une simple référence — le gabarit
+     *  lui-même vit dans sa bibliothèque, cf. `GabaritStoreTest`. */
+    @Test fun `l'affectation d'un gabarit survit a l'aller-retour`() {
+        val etalonne = lot.copy(gabaritId = "g1")
+        assertEquals("g1", LotStore.depuisJson(LotStore.versJson(listOf(etalonne)))[0].gabaritId)
+    }
 }

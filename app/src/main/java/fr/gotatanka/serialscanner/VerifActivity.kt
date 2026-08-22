@@ -30,7 +30,12 @@ class VerifActivity : AppCompatActivity() {
      *  vue ferait passer chaque ligne parcourue en saisie manuelle. */
     private var remplissage = false
 
-    private val format get() = lot.profil()?.format ?: SerialParser.APPLE
+    /** Le format du gabarit prime sur celui de la marque : il vient du numéro
+     *  désigné sur l'étiquette, pas d'une table. Apple reste le repli. */
+    private val format
+        get() = Depot.gabaritDuLot(this, lot)?.format
+            ?: lot.profil()?.format
+            ?: SerialParser.APPLE
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -190,7 +195,7 @@ class VerifActivity : AppCompatActivity() {
                 Controle.Alerte.VIDE -> getString(R.string.verif_alerte_vide)
                 Controle.Alerte.LONGUEUR -> getString(
                     R.string.verif_alerte_longueur,
-                    serial.length,
+                    SerialParser.canonique(serial).length,
                     format.longueurs.sorted().joinToString(" ou ")
                 )
                 Controle.Alerte.AMBIGU -> getString(R.string.verif_alerte_ambigu)

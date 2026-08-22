@@ -28,6 +28,12 @@ class LotsAdapter(
                 if (lot.aReprendre > 0) {
                     append(ctx.getString(R.string.lot_detail_reprise, lot.aReprendre))
                 }
+                // Sans ça, rien à l'écran ne distingue un lot étalonné d'un
+                // autre — et c'est la première chose à vérifier quand un scan
+                // ne lit pas ce qu'on attend.
+                Depot.gabarit(ctx, lot.gabaritId)?.let {
+                    append(ctx.getString(R.string.lot_detail_gabarit, it.nom))
+                }
             }
             b.root.setOnClickListener { onOuvrir(lot) }
             b.menu.setOnClickListener { onMenu(lot) }

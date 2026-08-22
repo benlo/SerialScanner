@@ -17,7 +17,7 @@ class PhotosTest {
         Reading(photo, Origine.SCAN, "C02W61JZQ6LC", null, null, false, timestamp = 0L)
 
     private fun lot(vararg lectures: Reading) =
-        Lot("id", "Palette", 0L, Lot.MARQUE_AUTO, lectures.toMutableList())
+        Lot("id", "Palette", 0L, Lot.MARQUE_AUTO, null, lectures.toMutableList())
 
     private fun fichier(dossier: File, nom: String) =
         File(dossier, nom).apply { writeText("jpeg") }

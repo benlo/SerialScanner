@@ -289,6 +289,112 @@ class SerialParserTest {
         assertNull(SerialParser.parse(mlkit3, SerialParser.profilParNom("Asus")).serial)
     }
 
+    /**
+     * Lecture dans une zone découpée par un gabarit.
+     *
+     * Le mot-clé est dehors par construction — c'est tout l'intérêt de la
+     * découpe — donc on ne l'exige pas dedans. L'ancrage n'a pas disparu, il a
+     * eu lieu géométriquement, en amont et plus fermement.
+     */
+    @Test fun `dans une zone de gabarit le mot-cle n'est plus exige`() {
+        assertEquals(
+            listOf("KINOCVO3K34002H"),
+            SerialParser.dansZone("KINOCVO3K34002H", SerialParser.ASUS)
+        )
+        assertEquals(
+            listOf("C02W61JZQ6LC"),
+            SerialParser.dansZone("C02W61JZQ6LC", SerialParser.APPLE)
+        )
+    }
+
+    /**
+     * **Le format reste souverain dans la zone.** Sans lui, cette lecture
+     * serait exactement le balayage au format qui a coûté si cher au prototype
+     * web. Une zone mal projetée qui attrape la garantie ou la date ne doit
+     * rien rendre.
+     */
+    @Test fun `une zone mal projetee ne rend rien de plausible`() {
+        assertEquals(emptyList<String>(), SerialParser.dansZone("24M", SerialParser.ASUS))
+        assertEquals(emptyList<String>(), SerialParser.dansZone("MFD: 2019-01", SerialParser.ASUS))
+        assertEquals(emptyList<String>(), SerialParser.dansZone("", SerialParser.ASUS))
+        // Le format Apple refuse le numéro Asus : la zone ne dispense pas de
+        // savoir ce qu'on cherche.
+        assertEquals(
+            emptyList<String>(),
+            SerialParser.dansZone("KINOCVO3K34002H", SerialParser.APPLE)
+        )
+    }
+
+    /**
+     * Numéro imprimé avec un séparateur, relevé sur un ThinkPad le 22/08/2026 :
+     * ML Kit rend `PW-047901`. Découpé sur la ponctuation, il ne donne que `PW`
+     * et `047901` — deux et six caractères, aucun plausible. Recollé, il fait
+     * les huit du format Lenovo.
+     */
+    @Test fun `un numero a separateur se lit tel qu'imprime`() {
+        // Ce qui est enregistré porte le tiret, comme l'étiquette.
+        assertEquals(
+            listOf("PW-0479Q1"),
+            SerialParser.dansZone("PW-0479Q1", SerialParser.LENOVO)
+        )
+        // Et c'est la forme sans ponctuation qui a été jugée au format.
+        assertEquals("PW0479Q1", SerialParser.canonique("PW-0479Q1"))
+        assertTrue(SerialParser.isPlausible("PW-0479Q1", SerialParser.LENOVO))
+    }
+
+    /**
+     * La ponctuation est **conservée dans ce qu'on enregistre et ignorée dans
+     * tout ce qu'on calcule**. Enregistrer la forme recollée mettrait dans le
+     * CSV du client une chaîne qui ne figure nulle part sur la machine ; la lui
+     * imposer au format refuserait un numéro parfaitement valide.
+     */
+    @Test fun `la ponctuation ne compte pas dans les longueurs`() {
+        assertFalse(SerialParser.isPlausible("PW-0479Q1", SerialParser.APPLE))
+        // Deux graphies du même numéro se normalisent pareil : la double
+        // lecture ne doit pas les prendre pour deux machines.
+        assertEquals(
+            SerialParser.normalise("PW0479Q1"),
+            SerialParser.normalise("PW-0479Q1")
+        )
+    }
+
+    /** ML Kit sépare parfois le numéro en deux mots : la ligne entière reste
+     *  candidate, avec son séparateur. */
+    @Test fun `un numero coupe en deux mots se recompose`() {
+        assertEquals(
+            listOf("PW 0479Q1"),
+            SerialParser.dansZone("PW 0479Q1", SerialParser.LENOVO)
+        )
+    }
+
+    /**
+     * Mais on ne recolle jamais une ligne qui porte un mot-clé : `SN:` collé au
+     * numéro fabriquerait une chaîne plus longue, qui pourrait tomber pile dans
+     * la longueur d'un autre format. Le mot-clé annonce le numéro, il n'en fait
+     * pas partie.
+     */
+    @Test fun `le mot-cle n'est jamais recolle au numero`() {
+        // `SN` + `PW047901` ferait dix caractères, soit une longueur Apple.
+        assertEquals(
+            emptyList<String>(),
+            SerialParser.dansZone("SN: PW-047901", SerialParser.APPLE)
+        )
+        // Le vrai numéro reste lisible sur cette même ligne, au bon format.
+        assertEquals(
+            listOf("PW047901"),
+            SerialParser.dansZone("SN: PW047901", SerialParser.LENOVO)
+        )
+    }
+
+    /** Une zone trop large attrape deux numéros : l'appelant refuse de
+     *  trancher, comme sur le chemin textuel. */
+    @Test fun `une zone trop large rend plusieurs candidats`() {
+        assertEquals(
+            listOf("C02W61JZQ6LC", "C02W61F3Q6LC"),
+            SerialParser.dansZone("C02W61JZQ6LC C02W61F3Q6LC", SerialParser.APPLE)
+        )
+    }
+
     /** `SN` nu reste refusé sans ponctuation, et ne s'attrape pas en fin de
      *  mot : c'est la raison pour laquelle il avait été écarté au départ. */
     @Test fun `SN nu exige ses deux-points`() {

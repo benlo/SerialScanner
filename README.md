@@ -10,10 +10,15 @@ Application Android, hors ligne, sans compte ni serveur.
 **Aujourd'hui, l'app est faite pour les Mac.** C'est sur des MacBook qu'elle a
 été construite et éprouvée — un lot de vingt-trois machines, deux photos de
 référence, et les erreurs de lecture qui ont façonné chacun de ses garde-fous.
-Les autres marques sont en place et fonctionnent, mais aucune n'a la même
-épaisseur d'usage derrière elle. **Le multi-marque est la direction, pas encore
-l'état.** La section [Plusieurs marques](#plusieurs-marques) dit précisément où
-en est chacune.
+Les autres marques fonctionnent, mais aucune n'a la même épaisseur d'usage
+derrière elle. **Le multi-marque est la direction, pas encore l'état.**
+
+Ce qui a changé le 22/08/2026 : les [gabarits](#gabarits). Une étiquette
+s'étalonne une fois — on y désigne le mot-clé et le numéro — et l'application
+sait ensuite la lire, quelle que soit la marque, sans qu'aucun format ait été
+codé pour elle. Trois dispositions réelles ont été relevées à ce jour : capot
+gravé Apple, Asus X512U, Lenovo Yoga. La section
+[Plusieurs marques](#plusieurs-marques) dit ce que valent encore les profils.
 
 ## Installer
 
@@ -84,6 +89,12 @@ en découlent.
    mot-clé ou juste dessous — mais alors la ligne doit être **nue**, un seul bloc
    alphanumérique et rien d'autre, sans quoi la garantie `24M` imprimée à côté
    ferait un candidat.
+
+   Avec un [gabarit](#gabarits), l'ancrage devient **géométrique** : le mot-clé
+   ne désigne plus la ligne mais une zone, et tout ce qui tombe hors d'elle
+   n'est pas analysé. Un garde-fou d'une autre nature — `24M` et `MFD:` cessent
+   d'être des candidats, non parce qu'ils échouent à un test mais parce qu'on ne
+   les regarde pas.
 2. **Deux lectures avant de valider**, à des instants — et si possible à des
    cadrages — différents. Un seul échantillon compté deux fois ne prouve rien.
 3. **Trois états, et le vert se mérite.** Gris : la machine a lu, personne n'a
@@ -103,7 +114,9 @@ et seulement s'il voit la photo.
 - **Import par lot** — sélection multiple depuis la galerie, seconde passe de
   reconnaissance recadrée sur la ligne repérée.
 - **Lots** — un lot par série de machines, par client ou par journée, persisté en
-  JSON local, avec sa marque.
+  JSON local, avec son gabarit.
+- **Gabarits** — une bibliothèque de modèles d'étiquette, étalonnés une fois et
+  réutilisés d'une palette à l'autre. Voir [Gabarits](#gabarits).
 - **Contrôle** — photo pinçable et numéro éditable, alertes de format, de lettre
   proscrite (ni Apple ni Asus n'emploient `O` ou `I`) et de voisinage (deux
   lignes à un caractère confondable près sont probablement le même capot relevé
@@ -111,6 +124,68 @@ et seulement s'il voit la photo.
   la photo, juste au-dessus, qui tranche.
 - **Export CSV** — `serial;model;emc;source;fiabilite;photo;horodatage`, à
   enregistrer ou à envoyer.
+
+## Gabarits
+
+Un gabarit dit **où se trouve le numéro sur une étiquette**, et quelle forme il
+a. Il s'étalonne une fois sur un modèle de machine, puis sert à toutes les
+palettes de ce modèle.
+
+C'est la réponse au problème que les profils marque ne savaient pas traiter :
+chaque fabricant dispose son étiquette autrement, et coder chaque disposition
+dans l'application ne passe pas à l'échelle. Trois mises en page rencontrées sur
+trois machines réelles, et le même objet les exprime toutes sans une ligne de
+code spécifique :
+
+| Machine | Mot-clé | Où est le numéro |
+|---|---|---|
+| MacBook (capot gravé) | `Serial` | à droite, même ligne |
+| Asus X512U | `SN:` | dessous, aligné à gauche |
+| Lenovo Yoga | `Serial Number` | dessous, décalé à gauche |
+
+### Comment il tient
+
+**Rien n'est stocké en pixels.** Une photo suivante est prise à une autre
+distance et à un autre angle ; un rectangle absolu n'y voudrait rien dire. La
+zone est exprimée en multiples de la **hauteur de la boîte du mot-clé**, origine
+à son coin haut-gauche. Que l'étiquette occupe 200 ou 900 pixels dans le cadre,
+les mêmes coefficients désignent le même endroit.
+
+Au scan, l'application cherche le mot-clé dans l'image, projette la zone depuis
+sa boîte, et n'analyse **que** ce qu'elle contient.
+
+### Ce qu'il porte
+
+- le **mot-clé** réellement imprimé, avec la position du numéro par rapport à lui ;
+- la **longueur** du numéro, en caractères utiles — relevée sur le numéro que
+  l'opérateur a désigné, pas devinée dans une table ;
+- l'**alphabet** : si la référence n'emploie ni `O` ni `I`, on les tient pour
+  proscrits, et les y voir devient une erreur de lecture signalée ;
+- la **photo de référence** et les deux rectangles désignés, qui rendent
+  l'étalonnage vérifiable après coup.
+
+Le format venant du gabarit, **déclarer une marque n'est plus nécessaire**. Une
+étiquette dont aucun profil ne connaît le format — Acer, MSI, Fujitsu — se lit
+dès lors qu'on l'a étalonnée une fois.
+
+### L'étalonner
+
+**Automatiquement**, pendant un scan : tant qu'un lot n'a pas de gabarit,
+l'application cherche dans chaque image un mot-clé et un numéro plausible, et en
+tire la géométrie. Deux images concordantes avant de l'adopter — ce qu'on
+confirme là est la **géométrie**, pas les caractères : un numéro mal lu a quand
+même la bonne boîte.
+
+**À la main**, quand l'automatique renonce. Il renonce dès qu'il y a deux
+candidats, et c'est délibéré : sur une étiquette dense, trancher reviendrait à
+deviner, et un gabarit deviné fausserait toute la palette — systématiquement. On
+photographie alors l'étiquette, et on **désigne deux mots reconnus** : le
+mot-clé, puis le numéro. Toucher un mot plutôt que tracer un rectangle donne sa
+boîte au pixel près *et* son contenu, dont le gabarit a besoin pour retrouver
+son ancre sur les photos suivantes.
+
+Un gabarit ne se supprime pas tant qu'un lot s'en sert — et l'application dit
+lesquels.
 
 ## Plusieurs marques
 
@@ -132,25 +207,23 @@ Le mot-clé seul ne suffit pas à trancher : HP, Lenovo et Asus écrivent tous
 format, jamais le mot-clé seul, et **on n'accepte jamais l'union de tous les
 formats** — ce serait rouvrir la porte au numéro plausible mais faux.
 
-**Déclarer la marque à la création du lot n'est pas un confort, c'est presque
-nécessaire hors Apple.** En scan, la reconnaissance ne travaille que sur le
-cadre de visée, resserré sur le numéro — le nom du fabricant, imprimé ailleurs
-sur l'étiquette, tombe hors cadre. La détection automatique n'a alors aucun
-indice, retombe sur Apple, et un numéro Asus de quinze caractères se fait
-refuser par un format qui en attend dix ou douze. Vérifié au logcat sur le
-X512U : pas une seule image du cadre ne contenait le mot `ASUSTek`.
+**Ces profils ne sont plus le chemin principal.** Détecter la marque au scan ne
+marche pas : la reconnaissance ne travaille que sur le cadre de visée, resserré
+sur le numéro, et le nom du fabricant est imprimé ailleurs sur l'étiquette.
+Vérifié au logcat sur le X512U — pas une seule image du cadre ne contenait le
+mot `ASUSTek`. Faute d'indice, c'est Apple qui s'appliquait, et un numéro Asus
+de quinze caractères se faisait refuser par un format qui en attend douze.
 
-La détection automatique sert donc surtout à l'import de photos, plus larges que
-le cadre de visée. À défaut d'indice, c'est Apple qui s'applique, le plus
-contraint des cinq — mieux vaut refuser une étiquette inconnue que valider un
-numéro douteux. Ajouter une marque tient en une ligne dans
-`SerialParser.PROFILS`.
+C'est ce constat qui a fait naître les [gabarits](#gabarits) : le format vient
+maintenant du numéro que l'opérateur désigne lui-même, et la création d'un lot
+ne demande plus de marque. Les profils restent le **repli sans gabarit**, où
+Apple s'applique — le plus contraint, et mieux vaut refuser une étiquette
+inconnue que valider un numéro douteux. Ils servent aussi à l'import de photos,
+plus larges que le cadre de visée, où le nom du fabricant est souvent visible.
 
-Ce qu'il faudrait pour qu'une marque rejoigne Apple : une poignée d'étiquettes
-réelles, qui confirment la longueur, disent si l'alphabet exclut `O` et `I`, et
-montrent où le numéro se place par rapport à son mot-clé. Les trois questions
-que l'Asus a tranchées d'un coup — et sur lesquelles il avait fallu deux
-correctifs.
+Ajouter une marque tient toujours en une ligne dans `SerialParser.PROFILS`, mais
+c'est devenu l'exception : étalonner un gabarit ne demande pas de toucher au
+code.
 
 ## Construire
 
@@ -214,9 +287,16 @@ la sortie ML Kit brute à côté de la vérité.
   la validation ferait mieux.
 - La lampe du téléphone est contre-productive (reflet spéculaire coaxial) : il
   faut un éclairage rasant.
-- Hors Apple, la marque doit être déclarée au lot : en scan, le nom du
-  fabricant tombe hors du cadre de visée et la détection automatique retombe
-  sur Apple.
+- Hors Apple, un lot sans gabarit lit mal : faute de format connu, il retombe
+  sur Apple et refuse les numéros d'une autre longueur. Étalonner un gabarit, ou
+  déclarer la marque par le menu du lot.
+- L'alphabet d'un gabarit — `O` et `I` employés ou non — est déduit d'un **seul**
+  numéro de référence. Si celui-ci n'en contient aucun par hasard, ils seront
+  tenus pour proscrits à tort. La conséquence reste mesurée : une alerte et une
+  correction proposée au contrôle, jamais une réécriture.
+- La géométrie d'un gabarit ne gère pas l'inclinaison : les boîtes de ML Kit sont
+  alignées sur les axes de l'image. Une étiquette franchement de biais décale la
+  zone. Deux points clés au lieu d'un donneraient la rotation.
 - ML Kit ne garantit pas l'ordre des lignes qu'il rend : sur certaines images
   d'une étiquette Asus, le numéro sortait avant son mot-clé. Ces images-là ne
   rendent rien, ce qui est correct, mais le scan met quelques secondes de plus

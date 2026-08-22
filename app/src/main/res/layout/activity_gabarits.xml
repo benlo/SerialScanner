@@ -11,31 +11,14 @@
         android:layout_height="match_parent"
         android:orientation="vertical">
 
-        <LinearLayout
+        <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:gravity="center_vertical"
-            android:orientation="horizontal"
-            android:paddingStart="16dp"
-            android:paddingEnd="6dp"
+            android:paddingHorizontal="16dp"
             android:paddingTop="14dp"
-            android:paddingBottom="10dp">
-
-            <TextView
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="@string/titre_lots"
-                android:textAppearance="@style/TitreEcran" />
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnGabarits"
-                style="@style/Widget.Material3.Button.TextButton"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/action_gabarits"
-                android:textColor="@color/ambre" />
-        </LinearLayout>
+            android:paddingBottom="10dp"
+            android:text="@string/titre_gabarits"
+            android:textAppearance="@style/TitreEcran" />
 
         <View
             android:layout_width="match_parent"
@@ -49,7 +32,7 @@
             android:layout_weight="1"
             android:gravity="center"
             android:padding="32dp"
-            android:text="@string/lots_vide"
+            android:text="@string/gabarits_vide"
             android:textAlignment="center"
             android:textColor="@color/texte_faible"
             android:textSize="14sp"
@@ -72,7 +55,7 @@
         android:layout_height="wrap_content"
         android:layout_gravity="bottom|end"
         android:layout_margin="20dp"
-        android:contentDescription="@string/action_nouveau_lot"
+        android:contentDescription="@string/gabarit_titre_nouveau"
         app:backgroundTint="@color/ambre"
         app:fabCustomSize="64dp"
         app:maxImageSize="30dp"
