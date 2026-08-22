@@ -53,6 +53,10 @@ class VerifActivity : AppCompatActivity() {
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
         supportActionBar?.title = getString(R.string.verif_titre)
 
+        // Le regard va d'abord aux caractères qui peuvent être faux — c'est le
+        // seul écran où l'œil arbitre entre le texte et la photo.
+        Ui.teinterConfusables(binding.serial)
+
         binding.serial.addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, d: Int, c: Int, a: Int) {}
             override fun onTextChanged(s: CharSequence?, d: Int, b: Int, c: Int) {}

@@ -68,7 +68,7 @@
             android:layout_height="wrap_content"
             android:autofillHints="off"
             android:background="@null"
-            android:fontFamily="monospace"
+            android:fontFamily="@font/jetbrains_mono"
             android:gravity="center_horizontal"
             android:hint="@string/review_hint"
             android:imeOptions="actionDone"

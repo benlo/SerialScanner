@@ -245,16 +245,23 @@ object SerialParser {
      * « lu deux fois pareil » de « lu deux fois le même à une confusion près »,
      * le second devant partir en vérification plutôt qu'en validation muette.
      */
-    fun normalise(s: String): String = s.map { c ->
-        when (c) {
-            'O', 'Q', '0' -> '0'
-            'I', 'L', '1' -> '1'
-            'B', '8' -> '8'
-            'S', '5' -> '5'
-            'Z', '2' -> '2'
-            else -> c
-        }
-    }.joinToString("")
+    private val CLASSES: Map<Char, Char> = mapOf(
+        'O' to '0', 'Q' to '0', '0' to '0',
+        'I' to '1', 'L' to '1', '1' to '1',
+        'B' to '8', '8' to '8',
+        'S' to '5', '5' to '5',
+        'Z' to '2', '2' to '2'
+    )
+
+    /**
+     * Les caractères qui appartiennent à une classe de confusion.
+     *
+     * Même source que [normalise], pour que l'œil de l'opérateur et la machine
+     * ne se fassent jamais une idée différente de ce qui est douteux.
+     */
+    val CONFUSABLES: Set<Char> = CLASSES.keys
+
+    fun normalise(s: String): String = s.map { CLASSES[it] ?: it }.joinToString("")
 
     /**
      * Le candidat a-t-il la forme annoncée par son mot-clé.

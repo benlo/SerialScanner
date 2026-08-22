@@ -114,4 +114,52 @@ class ControleTest {
             Controle.alertes("DGKXT2C6A9FM", SerialParser.APPLE, proche = "DGKX72C6A9FM")
         )
     }
+
+    /**
+     * Les positions à teinter au contrôle.
+     *
+     * Ce ne sont pas les caractères « suspects » d'une lecture donnée, mais
+     * tous ceux qui *pourraient* être faux — l'opérateur ne sait pas encore
+     * lesquels le sont, c'est justement ce qu'il va vérifier sur la photo.
+     */
+    @Test fun `les positions confusables sont celles des classes de confusion`() {
+        // C, 0, 2, W, 6, 1, J, Z, Q, 6, L, C → 0,2,1,Z,Q,L sont confusables
+        assertEquals(
+            listOf(1, 2, 5, 7, 8, 10),
+            Controle.positionsConfusables("C02W61JZQ6LC")
+        )
+        assertEquals(emptyList<Int>(), Controle.positionsConfusables("WXYT937"))
+        assertEquals(emptyList<Int>(), Controle.positionsConfusables(null))
+    }
+
+    /**
+     * Les fautes réellement commises sur le lot du 21/08, confrontées à ce que
+     * la teinte couvre. Quatre sur cinq tombent sur une position teintée.
+     */
+    @Test fun `les fautes reelles du lot tombent sur des positions teintees`() {
+        // Code modèle Q6LR lu Q6IR puis Q61R : le L, en position 2.
+        assertTrue(2 in Controle.positionsConfusables("Q6LR"))
+        // Le même lu O6LR : le Q, en position 0.
+        assertTrue(0 in Controle.positionsConfusables("Q6LR"))
+        // Code usine C02 lu COB : le 0 et le 2, tous deux teintés.
+        assertEquals(listOf(1, 2), Controle.positionsConfusables("C02"))
+    }
+
+    /**
+     * La faute que la teinte **ne couvre pas**, et il faut le savoir.
+     *
+     * `MD6M` a été lu `MDEM` sur le lot du 21/08 : un `6` pris pour un `E`.
+     * Cette paire n'est dans aucune classe de confusion — celles-ci ont été
+     * établies sur la gravure Apple, où le risque est `O`/`0` et `I`/`1`.
+     *
+     * L'élargir n'est pas anodin : [SerialParser.normalise] sert aussi à
+     * décider que deux lectures sont « la même », donc ajouter `6`/`E`
+     * rendrait la double lecture plus permissive. Décision à prendre à part,
+     * sur plus d'un exemplaire.
+     */
+    @Test fun `la confusion 6-E n'est pas couverte`() {
+        assertEquals(emptyList<Int>(), Controle.positionsConfusables("MD6M"))
+        assertEquals("MD6M", SerialParser.normalise("MD6M"))
+        assertEquals("MDEM", SerialParser.normalise("MDEM"))
+    }
 }

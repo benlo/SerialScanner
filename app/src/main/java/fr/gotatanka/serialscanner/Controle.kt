@@ -35,6 +35,23 @@ object Controle {
         serial.map { SUBSTITUTIONS[it] ?: it }.joinToString("")
 
     /**
+     * Les positions du numéro où l'œil doit aller en premier.
+     *
+     * Un opérateur qui compare douze caractères à une photo les balaie tous
+     * avec la même attention, alors que l'erreur ne peut se loger que dans une
+     * classe de confusion — `Q6LR` lu `Q6IR` sur le lot du 21/08, `MD6M` lu
+     * `MDEM`, `C02` lu `COB`. Teinter ces positions-là, c'est diriger le regard
+     * là où la faute est possible.
+     *
+     * Kotlin pur : l'écran ne fait qu'appliquer une couleur sur ce que rend
+     * cette fonction.
+     */
+    fun positionsConfusables(serial: String?): List<Int> =
+        serial.orEmpty().mapIndexedNotNull { i, c ->
+            i.takeIf { c.uppercaseChar() in SerialParser.CONFUSABLES }
+        }
+
+    /**
      * Distance d'édition entre deux numéros, plafonnée à [max].
      *
      * Deux relevés d'un même lot qui ne diffèrent que d'un caractère sont bien

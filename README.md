@@ -7,6 +7,14 @@ d'un lot en reconditionnement : le geste est le même, trente capots à lire.
 
 Application Android, hors ligne, sans compte ni serveur.
 
+**Aujourd'hui, l'app est faite pour les Mac.** C'est sur des MacBook qu'elle a
+été construite et éprouvée — un lot de vingt-trois machines, deux photos de
+référence, et les erreurs de lecture qui ont façonné chacun de ses garde-fous.
+Les autres marques sont en place et fonctionnent, mais aucune n'a la même
+épaisseur d'usage derrière elle. **Le multi-marque est la direction, pas encore
+l'état.** La section [Plusieurs marques](#plusieurs-marques) dit précisément où
+en est chacune.
+
 ## Installer
 
 L'APK se télécharge dans les [releases](https://github.com/benlo/SerialScanner/releases/latest),
@@ -43,13 +51,24 @@ mal la gravure. C'est le zoom qui compense, pas l'approche.
 
 ## Le problème
 
-Le numéro est gravé sous le capot : gris sur gris, sur alu brossé, souvent sur
-une surface incurvée. Le grain du métal a le même contraste que la gravure, donc
-tout seuillage qui préserve le texte préserve aussi le bruit. Tesseract, mesuré
-sur les photos de ce parc avec trois prétraitements différents, rendait au mieux
-`COBWBIJZOGLG` là où le numéro est `C02W61JZQ6LC` : huit caractères faux sur
-douze. ML Kit, neuronal et embarqué, lit la même gravure juste — **sur l'image
-brute**, pas sur une image binarisée.
+Il y a deux matières, et elles ne résistent pas de la même façon.
+
+**La gravure**, sous les capots Apple : gris sur gris, sur alu brossé, souvent
+sur une surface incurvée. Le grain du métal a le même contraste que la gravure,
+donc tout seuillage qui préserve le texte préserve aussi le bruit. Tesseract,
+mesuré sur les photos de ce parc avec trois prétraitements différents, rendait
+au mieux `COBWBIJZOGLG` là où le numéro est `C02W61JZQ6LC` : huit caractères
+faux sur douze. ML Kit, neuronal et embarqué, lit la même gravure juste — **sur
+l'image brute**, pas sur une image binarisée.
+
+**L'étiquette collée**, chez tous les autres : optiquement facile, noir sur
+blanc. Elle résiste ailleurs. D'abord par sa mise en page — un Asus X512U écrit
+`SN:` et la durée de garantie sur une ligne, le numéro seul sur la ligne
+suivante, alors qu'un capot gravé met tout sur une seule ligne. Ensuite parce
+que l'aisance de lecture est trompeuse : sur cette même étiquette, ML Kit a
+rendu **deux fois de suite** `KINOCV03K34002H` là où l'étiquette porte
+`K1N0CV03K34002H` — un `I` pour un `1`, un `O` pour un `0`. Deux lectures
+concordantes et fausses, sur une étiquette nette.
 
 ## Le principe
 
@@ -58,10 +77,13 @@ vide se voit et se reprend, une ligne fausse se remonte au client. Trois choses
 en découlent.
 
 1. **Ancrage sur le mot-clé.** Le numéro est lu parce qu'il suit `Serial`,
-   `S/N` ou `Service Tag`, jamais parce qu'il a la bonne forme — la ligne gravée
-   contient aussi `20.0V`, `1.5A`, `A2337`, `3598`, tous candidats à un regex de
-   dix à douze caractères. Le mot-clé commande le format attendu ; sans mot-clé,
-   la ligne est marquée à reprendre.
+   `S/N`, `SN:` ou `Service Tag`, jamais parce qu'il a la bonne forme — la ligne
+   gravée contient aussi `20.0V`, `1.5A`, `A2337`, `3598`, tous candidats à un
+   regex de dix à douze caractères. Le mot-clé commande le format attendu ; sans
+   mot-clé, la ligne est marquée à reprendre. Le numéro peut être sur la ligne du
+   mot-clé ou juste dessous — mais alors la ligne doit être **nue**, un seul bloc
+   alphanumérique et rien d'autre, sans quoi la garantie `24M` imprimée à côté
+   ferait un candidat.
 2. **Deux lectures avant de valider**, à des instants — et si possible à des
    cadrages — différents. Un seul échantillon compté deux fois ne prouve rien.
 3. **Trois états, et le vert se mérite.** Gris : la machine a lu, personne n'a
@@ -80,41 +102,55 @@ et seulement s'il voit la photo.
   paliers, retour haptique à la validation.
 - **Import par lot** — sélection multiple depuis la galerie, seconde passe de
   reconnaissance recadrée sur la ligne repérée.
-- **Lots** — un lot par palette ou par journée, persisté en JSON local, avec sa
-  marque.
+- **Lots** — un lot par série de machines, par client ou par journée, persisté en
+  JSON local, avec sa marque.
 - **Contrôle** — photo pinçable et numéro éditable, alertes de format, de lettre
-  proscrite (Apple n'emploie ni `O` ni `I`) et de voisinage (deux lignes à un
-  caractère confondable près sont probablement le même capot relevé deux fois).
+  proscrite (ni Apple ni Asus n'emploient `O` ou `I`) et de voisinage (deux
+  lignes à un caractère confondable près sont probablement le même capot relevé
+  deux fois). La correction est **proposée, jamais appliquée d'office** : c'est
+  la photo, juste au-dessus, qui tranche.
 - **Export CSV** — `serial;model;emc;source;fiabilite;photo;horodatage`, à
   enregistrer ou à envoyer.
 
 ## Plusieurs marques
 
-Un parc de reconditionnement n'est pas homogène : Apple grave, les autres
-collent une étiquette, et les formats n'ont rien à voir. Chaque marque est un
-**profil** — ce que l'étiquette dit d'elle-même (`ThinkPad`, `ProBook`,
-`Latitude`, `ASUS`, `MacBook` ou `EMC`) et le format attendu derrière.
+Un parc n'est jamais homogène : Apple grave, les autres collent une étiquette,
+et les formats n'ont rien à voir. Chaque marque est un **profil** — ce que
+l'étiquette dit d'elle-même (`ThinkPad`, `ProBook`, `ASUS`, `MacBook` ou `EMC`)
+et le format attendu derrière.
 
-| Profil | Longueur | Indices sur l'étiquette |
-|---|---|---|
-| Apple | 10 ou 12, jamais de `O` ni de `I` | `MacBook`, `EMC` |
-| Dell | 7 (Service Tag) | `DELL`, `SERVICE TAG`, `EXPRESS SERVICE` |
-| Lenovo | 8 | `LENOVO`, `THINKPAD`, `THINKBOOK`, `MTM` |
-| HP | 10 | `PROBOOK`, `ELITEBOOK`, `HEWLETT`, `HP` |
-| Asus | 15 | `ASUS` |
+| Profil | Longueur | Indices sur l'étiquette | Éprouvé ? |
+|---|---|---|---|
+| Apple | 10 ou 12, jamais de `O` ni de `I` | `MacBook`, `EMC` | **oui**, lot de 23 machines |
+| Asus | 15, jamais de `O` ni de `I` | `ASUS` | une étiquette, un X512U |
+| Dell | 7 (Service Tag) | `DELL`, `SERVICE TAG`, `EXPRESS SERVICE` | non, doc constructeur |
+| Lenovo | 8 | `LENOVO`, `THINKPAD`, `THINKBOOK`, `MTM` | non, doc constructeur |
+| HP | 10 | `PROBOOK`, `ELITEBOOK`, `HEWLETT`, `HP` | non, doc constructeur |
 
 Le mot-clé seul ne suffit pas à trancher : HP, Lenovo et Asus écrivent tous
 `S/N` devant trois longueurs différentes. C'est donc le profil qui commande le
 format, jamais le mot-clé seul, et **on n'accepte jamais l'union de tous les
 formats** — ce serait rouvrir la porte au numéro plausible mais faux.
 
-La marque déclarée à la création du lot prime sur la détection : trente Dell
-d'affilée, autant le dire une fois. Sans déclaration, le profil se déduit de
-l'étiquette, et à défaut c'est Apple qui s'applique, le plus contraint des cinq.
-Ajouter une marque tient en une ligne dans `SerialParser.PROFILS`.
+**Déclarer la marque à la création du lot n'est pas un confort, c'est presque
+nécessaire hors Apple.** En scan, la reconnaissance ne travaille que sur le
+cadre de visée, resserré sur le numéro — le nom du fabricant, imprimé ailleurs
+sur l'étiquette, tombe hors cadre. La détection automatique n'a alors aucun
+indice, retombe sur Apple, et un numéro Asus de quinze caractères se fait
+refuser par un format qui en attend dix ou douze. Vérifié au logcat sur le
+X512U : pas une seule image du cadre ne contenait le mot `ASUSTek`.
 
-Seul le profil Apple est vérifié sur un parc réel ; les autres longueurs
-viennent de la documentation constructeur.
+La détection automatique sert donc surtout à l'import de photos, plus larges que
+le cadre de visée. À défaut d'indice, c'est Apple qui s'applique, le plus
+contraint des cinq — mieux vaut refuser une étiquette inconnue que valider un
+numéro douteux. Ajouter une marque tient en une ligne dans
+`SerialParser.PROFILS`.
+
+Ce qu'il faudrait pour qu'une marque rejoigne Apple : une poignée d'étiquettes
+réelles, qui confirment la longueur, disent si l'alphabet exclut `O` et `I`, et
+montrent où le numéro se place par rapport à son mot-clé. Les trois questions
+que l'Asus a tranchées d'un coup — et sur lesquelles il avait fallu deux
+correctifs.
 
 ## Construire
 
@@ -165,6 +201,10 @@ voisins, groupement des codes modèle. Les erreurs de lecture citées sont donc
 réelles dans leur forme, mais ne désignent aucune machine existante. Les
 machines, elles, appartiennent à un client.
 
+Une exception : `K1N0CV03K34002H`, le numéro Asus, n'est pas transposé. C'est
+la machine de l'auteur, pas celle d'un client, et c'est ce qui permet de citer
+la sortie ML Kit brute à côté de la vérité.
+
 ## Limites connues
 
 - Le format 11 caractères (Mac d'avant 2010) est refusé : l'accepter validerait
@@ -174,3 +214,14 @@ machines, elles, appartiennent à un client.
   la validation ferait mieux.
 - La lampe du téléphone est contre-productive (reflet spéculaire coaxial) : il
   faut un éclairage rasant.
+- Hors Apple, la marque doit être déclarée au lot : en scan, le nom du
+  fabricant tombe hors du cadre de visée et la détection automatique retombe
+  sur Apple.
+- ML Kit ne garantit pas l'ordre des lignes qu'il rend : sur certaines images
+  d'une étiquette Asus, le numéro sortait avant son mot-clé. Ces images-là ne
+  rendent rien, ce qui est correct, mais le scan met quelques secondes de plus
+  à accrocher.
+- **Les codes-barres et QR ne sont pas lus.** Les étiquettes collées en portent
+  presque toujours un, qui contient le numéro avec une somme de contrôle — donc
+  structurellement plus sûr que n'importe quelle lecture de caractères. C'est la
+  piste la plus rentable pour les marques non-Apple.
