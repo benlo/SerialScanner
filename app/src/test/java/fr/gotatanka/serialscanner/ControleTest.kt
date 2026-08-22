@@ -146,6 +146,45 @@ class ControleTest {
     }
 
     /**
+     * L'alerte du masque, et la seule qui attrape les fautes du 21/08.
+     *
+     * `Q6IR` au milieu de quatre `Q6LR` confirmés : ni la longueur, ni
+     * l'alphabet, ni le voisinage ne le signalent — seule la position.
+     */
+    @Test fun `le masque ajoute son alerte`() {
+        val confirmes = listOf(
+            "C02W61JZQ6LR", "C02W61F3Q6LR", "C02W72KMQ6LR", "C02W83NPQ6LR"
+        )
+        val masque = Masque.apprendre(confirmes)!!
+        // Un écart que rien d'autre ne voit : `R` lu `P`, hors classe de
+        // confusion et sans lettre proscrite.
+        assertEquals(
+            listOf(Controle.Alerte.MASQUE),
+            Controle.alertes("C02W61JZQ6LP", SerialParser.APPLE, masque = masque)
+        )
+        // Le `L` lu `I` déclenche les deux : l'alphabet Apple *et* le masque.
+        assertEquals(
+            listOf(Controle.Alerte.AMBIGU, Controle.Alerte.MASQUE),
+            Controle.alertes("C02W61JZQ6IR", SerialParser.APPLE, masque = masque)
+        )
+        // Et une machine conforme ne déclenche rien.
+        assertEquals(
+            emptyList<Controle.Alerte>(),
+            Controle.alertes("C02WA5XYQ6LR", SerialParser.APPLE, masque = masque)
+        )
+    }
+
+    /** Sans masque — lot trop jeune, ou dépareillé — le contrôle se comporte
+     *  exactement comme avant : la fonctionnalité s'ajoute, elle ne remplace
+     *  rien. */
+    @Test fun `sans masque le controle ne change pas`() {
+        assertEquals(
+            emptyList<Controle.Alerte>(),
+            Controle.alertes("C02W61JZQ6LP", SerialParser.APPLE, masque = null)
+        )
+    }
+
+    /**
      * La faute que la teinte **ne couvre pas**, et il faut le savoir.
      *
      * `MD6M` a été lu `MDEM` sur le lot du 21/08 : un `6` pris pour un `E`.

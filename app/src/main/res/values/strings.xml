@@ -112,6 +112,10 @@ Le retirer de ces lots avant de le supprimer.</string>
     <string name="verif_alerte_vide">numéro absent</string>
     <string name="verif_alerte_longueur">%1$d caractères, attendu %2$s</string>
     <string name="verif_alerte_ambigu">contient O ou I — ce format ne les emploie pas</string>
+    <plurals name="verif_alerte_masque">
+        <item quantity="one">%1$d caractère s\'écarte de ce que tout le lot porte</item>
+        <item quantity="other">%1$d caractères s\'écartent de ce que tout le lot porte</item>
+    </plurals>
     <string name="verif_alerte_doublon">déjà relevé dans ce lot</string>
     <string name="verif_alerte_proche">proche de %1$s — même machine ?</string>
     <string name="verif_corriger">Corriger en %1$s</string>

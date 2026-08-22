@@ -14,7 +14,7 @@ package fr.gotatanka.serialscanner
 object Controle {
 
     /** Ce qui se signale sous un numéro, du plus grave au plus anodin. */
-    enum class Alerte { VIDE, LONGUEUR, AMBIGU, DOUBLON, PROCHE }
+    enum class Alerte { VIDE, LONGUEUR, AMBIGU, MASQUE, DOUBLON, PROCHE }
 
     /** Les lettres qu'un alphabet « sans O ni I » n'emploie jamais, avec le
      *  chiffre qu'elles sont forcément en train de masquer. */
@@ -128,7 +128,8 @@ object Controle {
         serial: String?,
         format: SerialParser.Format,
         doublon: Boolean = false,
-        proche: String? = null
+        proche: String? = null,
+        masque: Masque? = null
     ): List<Alerte> = buildList {
         if (serial.isNullOrBlank()) add(Alerte.VIDE)
         else {
@@ -137,6 +138,9 @@ object Controle {
             // être signalé trop long parce qu'il porte un tiret.
             if (SerialParser.canonique(serial).length !in format.longueurs) add(Alerte.LONGUEUR)
             if (ambigu(serial, format)) add(Alerte.AMBIGU)
+            // Une position que tout le lot partage, et que cette ligne seule
+            // fait varier : presque toujours une lecture fausse. Voir [Masque].
+            if (masque?.ecarts(serial)?.isNotEmpty() == true) add(Alerte.MASQUE)
         }
         if (doublon) add(Alerte.DOUBLON)
         if (proche != null) add(Alerte.PROCHE)

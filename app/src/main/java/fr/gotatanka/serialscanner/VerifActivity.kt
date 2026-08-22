@@ -30,6 +30,9 @@ class VerifActivity : AppCompatActivity() {
      *  vue ferait passer chaque ligne parcourue en saisie manuelle. */
     private var remplissage = false
 
+    /** Ce que le bouton de correction annonce, et donc ce qu'il applique. */
+    private var correctionProposee: String? = null
+
     /** Le format du gabarit prime sur celui de la marque : il vient du numéro
      *  désigné sur l'étiquette, pas d'une table. Apple reste le repli. */
     private val format
@@ -88,7 +91,9 @@ class VerifActivity : AppCompatActivity() {
         binding.btnPrec.setOnClickListener { aller(index - 1) }
         binding.btnSuiv.setOnClickListener { aller(index + 1) }
         binding.btnCorriger.setOnClickListener {
-            val corrige = Controle.desambiguise(binding.serial.text.toString())
+            // Applique exactement ce que le bouton annonce : deux corrections
+            // sont possibles, et recalculer ici en aurait choisi une autre.
+            val corrige = correctionProposee ?: return@setOnClickListener
             binding.serial.setText(corrige)
             binding.serial.setSelection(corrige.length)
         }
@@ -188,7 +193,13 @@ class VerifActivity : AppCompatActivity() {
         val doublon = serial.isNotBlank() &&
             lot.readings.filterIndexed { i, _ -> i != index }.any { it.serial == serial }
         val voisin = if (serial.isBlank()) null else lot.proche(serial, index)
-        val alertes = Controle.alertes(serial, format, doublon, voisin)
+        // Le masque exclut la ligne en cours : sinon une lecture fausse déjà
+        // confirmée se justifierait elle-même.
+        val masque = Masque.apprendre(
+            lot.readings.filterIndexed { i, _ -> i != index }
+                .filter { it.controle }.mapNotNull { it.serial }
+        )
+        val alertes = Controle.alertes(serial, format, doublon, voisin, masque)
 
         val texte = alertes.joinToString(" · ") {
             when (it) {
@@ -199,6 +210,10 @@ class VerifActivity : AppCompatActivity() {
                     format.longueurs.sorted().joinToString(" ou ")
                 )
                 Controle.Alerte.AMBIGU -> getString(R.string.verif_alerte_ambigu)
+                Controle.Alerte.MASQUE -> {
+                    val n = masque?.ecarts(serial)?.size ?: 0
+                    resources.getQuantityString(R.plurals.verif_alerte_masque, n, n)
+                }
                 Controle.Alerte.DOUBLON -> getString(R.string.verif_alerte_doublon)
                 Controle.Alerte.PROCHE -> getString(R.string.verif_alerte_proche, voisin)
             }
@@ -208,11 +223,19 @@ class VerifActivity : AppCompatActivity() {
 
         // La correction est proposée, jamais appliquée d'office : c'est la
         // photo qui tranche, et elle est juste au-dessus.
+        // Deux corrections possibles, une seule à la fois : le masque passe
+        // devant, parce qu'il s'appuie sur ce que le lot dit — et donc sur des
+        // lignes qu'un opérateur a déjà confirmées — là où l'alphabet ne fait
+        // qu'appliquer une règle générale.
+        val parMasque = Controle.Alerte.MASQUE in alertes
         val ambigu = Controle.Alerte.AMBIGU in alertes
-        binding.btnCorriger.isVisible = ambigu
-        if (ambigu) {
-            binding.btnCorriger.text =
-                getString(R.string.verif_corriger, Controle.desambiguise(serial))
+        binding.btnCorriger.isVisible = parMasque || ambigu
+        correctionProposee = null
+        if (parMasque || ambigu) {
+            val propose =
+                if (parMasque) masque!!.corriger(serial) else Controle.desambiguise(serial)
+            correctionProposee = propose
+            binding.btnCorriger.text = getString(R.string.verif_corriger, propose)
         }
     }
 

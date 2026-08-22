@@ -75,6 +75,17 @@ data class Lot(
             .filterValues { it > 1 }
             .keys
 
+    /**
+     * Les positions que ce lot ne fait jamais varier, apprises de ses seules
+     * lignes **confirmées à l'œil**.
+     *
+     * Apprendre des lectures brutes ferait entrer une erreur dans le masque, et
+     * elle condamnerait ensuite les lectures justes — une faute systématique là
+     * où l'on cherchait un garde-fou. Voir [Masque].
+     */
+    val masque: Masque?
+        get() = Masque.apprendre(readings.filter { it.controle }.mapNotNull { it.serial })
+
     /** Sans la ponctuation : `PW-0479Q1` et `PW0479Q1` sont le même capot, et
      *  le relever deux fois sous deux graphies serait un doublon invisible. */
     fun contient(serial: String) = readings.any {
