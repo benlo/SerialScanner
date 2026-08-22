@@ -75,6 +75,8 @@ object GabaritStore {
                     .put("refSN", boiteJson(g.refSN))
                     .put("longueur", g.longueur)
                     .put("sansOI", g.sansOI)
+                    .put("tripleAdmis", g.tripleAdmis)
+                    .put("numero", g.numero)
             )
         }
         return racine.toString()
@@ -106,7 +108,9 @@ object GabaritStore {
                     refAncre = boiteDepuis(o.optJSONArray("refAncre")),
                     refSN = boiteDepuis(o.optJSONArray("refSN")),
                     longueur = o.optInt("longueur", 0),
-                    sansOI = o.optBoolean("sansOI", false)
+                    sansOI = o.optBoolean("sansOI", false),
+                    tripleAdmis = o.optBoolean("tripleAdmis", false),
+                    numero = o.optString("numero")
                 )
             )
         }

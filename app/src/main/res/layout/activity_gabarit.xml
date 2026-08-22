@@ -70,19 +70,9 @@
         <Button
             android:id="@+id/photographier"
             style="?attr/materialButtonOutlinedStyle"
-            android:layout_width="0dp"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
             android:text="@string/gabarit_photographier" />
-
-        <Button
-            android:id="@+id/galerie"
-            style="?attr/materialButtonOutlinedStyle"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:layout_marginStart="8dp"
-            android:text="@string/gabarit_choisir_photo" />
     </LinearLayout>
 
     <LinearLayout
@@ -99,7 +89,7 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="@string/gabarit_effacer" />
+            android:text="@string/gabarit_effacer_ancre" />
 
         <Button
             android:id="@+id/enregistrer"

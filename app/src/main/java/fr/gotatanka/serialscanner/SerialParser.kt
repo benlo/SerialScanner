@@ -30,7 +30,16 @@ object SerialParser {
          *  qu'on ne les confonde pas avec 0 et 1 : un O lu dans un numéro Apple
          *  est donc une erreur de lecture, jamais un numéro rare. Laissé faux
          *  ailleurs, faute d'étiquettes pour le confirmer. */
-        val sansOI: Boolean = false
+        val sansOI: Boolean = false,
+        /**
+         * Trois caracteres identiques d'affilee condamnent-ils la lecture.
+         *
+         * Vrai par defaut : aucun numero constructeur connu ne les aligne,
+         * alors qu'un OCR en difficulte le fait volontiers. Un gabarit peut
+         * lever la regle quand sa reference porte elle-meme un triple — un
+         * numero de lot de batterie externe se termine par `000048`.
+         */
+        val refuseTriple: Boolean = true
     )
 
     /** Apple : 12 caractères jusqu'en 2021, 10 depuis, toujours un code usine
@@ -252,17 +261,34 @@ object SerialParser {
         for (brute in rawText.uppercase().lines()) {
             val ligne = brute.trim()
             if (ligne.isEmpty()) continue
-            // Les mots de la ligne, **tels qu'imprimés** : c'est cette forme-là
+            // **Toutes les suites de mots consécutifs**, mot isolé et ligne
+            // entière compris, et **tels qu'imprimés** : c'est cette forme-là
             // qui sera enregistrée, séparateur compris. `isPlausible` juge sur
-            // la forme sans ponctuation, donc `PW-0479Q1` passe le format
-            // Lenovo à huit caractères sans qu'on ait à le mutiler.
-            candidats += ligne.split(Regex("\\s+")).filter { it.isNotEmpty() }
-            // Puis la ligne entière, pour le cas où ML Kit sépare `PW` et
-            // `0479Q1` en deux mots. Jamais sur une ligne qui porte un mot-clé :
-            // recoller `SN:` au numéro fabriquerait une chaîne plus longue, qui
-            // pourrait tomber pile dans la longueur d'un autre format. Le
-            // mot-clé annonce le numéro, il n'en fait pas partie.
-            if (!voitAncre(ligne)) candidats += ligne
+            // la forme sans ponctuation, donc `PW-0479Q1` passe le format Lenovo
+            // à huit caractères sans qu'on ait à le mutiler.
+            //
+            // ML Kit ne découpe pas deux fois pareil : `19_17_1900048` sort
+            // tantôt d'un bloc, tantôt en `19` et `17_1900048`, le premier tiret
+            // bas rendu comme une espace. Ne regarder que les mots isolés et la
+            // ligne entière ratait le numéro une trame sur deux.
+            //
+            // La longueur exacte fait le tri : sur `Lot n°: 19 17_1900048`, la
+            // seule suite de onze caractères utiles est le numéro. C'est le même
+            // raisonnement que [Recompose] pour retrouver la boîte — les deux
+            // doivent recomposer pareil, sous peine de se contredire, ce qui a
+            // déjà coûté trois correctifs.
+            val mots = ligne.split(Regex("\\s+")).filter { it.isNotEmpty() }
+            for (debut in mots.indices) {
+                for (fin in debut until mots.size) {
+                    val suite = mots.subList(debut, fin + 1).joinToString(" ")
+                    // Jamais à travers un mot-clé : recoller `SN:` au numéro
+                    // fabriquerait une chaîne plus longue, qui pourrait tomber
+                    // pile dans la longueur d'un autre format. Le mot-clé
+                    // annonce le numéro, il n'en fait pas partie.
+                    if (fin > debut && voitAncre(suite)) break
+                    candidats += suite
+                }
+            }
         }
         return candidats
             .map { fixPrefix(it) }
@@ -321,13 +347,16 @@ object SerialParser {
      */
     fun canonique(s: String): String = s.uppercase().filter { it.isLetterOrDigit() }
 
+    /** Le numero aligne-t-il trois caracteres identiques. */
+    fun aUnTriple(s: String): Boolean = TRIPLE.containsMatchIn(canonique(s))
+
     fun isPlausible(s: String, format: Format = APPLE): Boolean {
         val c = canonique(s)
         if (c.length !in format.longueurs) return false
         if (format.premiereLettre && !c.first().isLetter()) return false
         if (c.count { it.isDigit() } < format.minChiffres) return false
         if (c.count { it.isLetter() } < format.minLettres) return false
-        if (TRIPLE.containsMatchIn(c)) return false
+        if (format.refuseTriple && TRIPLE.containsMatchIn(c)) return false
         return true
     }
 }

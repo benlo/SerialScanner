@@ -8,7 +8,6 @@ import android.util.Log
 import androidx.core.content.FileProvider
 import java.io.File
 import android.os.Bundle
-import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import com.google.mlkit.vision.common.InputImage
@@ -20,9 +19,10 @@ import java.util.UUID
 /**
  * Étalonner un gabarit à la main, sur une photo d'étiquette.
  *
- * La photo vient du sélecteur du système plutôt que d'un écran de prise de vue
- * maison : le flux d'atelier passe déjà par l'app photo, et un écran caméra de
- * plus serait un écran de plus à maintenir pour le même résultat.
+ * La photo se prend avec l'appareil du système plutôt qu'avec un écran caméra
+ * maison : un écran de plus à maintenir pour le même résultat. Le cliché va dans
+ * le cache de l'application, pas dans la pellicule — il ne sert qu'à
+ * l'étalonnage.
  *
  * L'opérateur désigne deux mots reconnus — le point clé, puis le numéro. C'est
  * ce que la déduction automatique ne peut pas faire quand l'étiquette porte
@@ -39,10 +39,6 @@ class GabaritActivity : AppCompatActivity() {
     private val existant: Gabarit? by lazy {
         Depot.gabarit(this, intent.getStringExtra(EXTRA_GABARIT_ID))
     }
-
-    private val choisirPhoto = registerForActivityResult(
-        ActivityResultContracts.PickVisualMedia()
-    ) { uri -> uri?.let { charger(it) } }
 
     /** Le cliché pris a l'instant, en attente du retour de l'appareil photo. */
     private var cliche: Uri? = null
@@ -73,23 +69,13 @@ class GabaritActivity : AppCompatActivity() {
         }
         binding.photo.surSelection = ::majEtat
         binding.photographier.setOnClickListener { prendreCliche() }
-        binding.galerie.setOnClickListener {
-            choisirPhoto.launch(
-                PickVisualMediaRequest.Builder()
-                    .setMediaType(ActivityResultContracts.PickVisualMedia.ImageOnly)
-                    .build()
-            )
-        }
         binding.roles.check(R.id.roleAncre)
         binding.roles.addOnButtonCheckedListener { _, id, coche ->
             if (!coche) return@addOnButtonCheckedListener
             binding.photo.role =
                 if (id == R.id.roleAncre) VueGabarit.Role.ANCRE else VueGabarit.Role.NUMERO
         }
-        binding.effacer.setOnClickListener {
-            binding.photo.effacer()
-            binding.roles.check(R.id.roleAncre)
-        }
+        binding.effacer.setOnClickListener { binding.photo.effacer() }
         binding.enregistrer.setOnClickListener { enregistrer() }
         majEtat()
     }
@@ -162,6 +148,12 @@ class GabaritActivity : AppCompatActivity() {
         val ancre = binding.photo.ancre
         val numero = binding.photo.numero
         binding.enregistrer.isEnabled = ancre != null && numero != null
+        // Le bouton dit ce qu'il vide : « Effacer » seul laissait croire qu'il
+        // effaçait tout, alors qu'il ne touche qu'au role actif.
+        binding.effacer.setText(
+            if (binding.photo.role == VueGabarit.Role.ANCRE) R.string.gabarit_effacer_ancre
+            else R.string.gabarit_effacer_numero
+        )
         if (binding.photo.mots.isEmpty()) return
         binding.consigne.text = when {
             ancre == null -> getString(R.string.gabarit_consigne_ancre)
@@ -247,7 +239,9 @@ class GabaritActivity : AppCompatActivity() {
         val numeros = dans(g.refSN)
         Log.d(TAG, "preselection : ancre=" + ancres.size + " numero=" + numeros.size)
         if (ancres.isEmpty() && numeros.isEmpty()) return
-        binding.photo.preselectionner(ancres, numeros)
+        // La zone enregistrée peut avoir été élargie à la main : la repasser
+        // telle quelle, sinon l'ajustement se perdrait à chaque réouverture.
+        binding.photo.preselectionner(ancres, numeros, g.refSN)
     }
 
     companion object {

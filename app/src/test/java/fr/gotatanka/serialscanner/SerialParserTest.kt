@@ -368,6 +368,39 @@ class SerialParserTest {
     }
 
     /**
+     * Suites de mots consécutifs, relevé sur une batterie externe.
+     *
+     * ML Kit rend `19_17_1900048` tantôt d'un bloc, tantôt en `19` et
+     * `17_1900048` — le premier tiret bas devenu une espace. Le mot-clé est dans
+     * la zone, et le numéro est au milieu de la ligne : ni les mots isolés ni la
+     * ligne entière ne font onze caractères, seule la suite du milieu.
+     */
+    @Test fun `un numero au milieu d'une ligne se recompose`() {
+        val onze = SerialParser.Format(
+            longueurs = setOf(11), premiereLettre = false,
+            minChiffres = 0, minLettres = 0, refuseTriple = false
+        )
+        assertEquals(
+            listOf("19 17_1900048"),
+            SerialParser.dansZone("Lot n°: 19 17_1900048", onze)
+        )
+        // Et d'un bloc, la même ligne rend le numéro tel qu'imprimé.
+        assertEquals(
+            listOf("19_17_1900048"),
+            SerialParser.dansZone("Lot n°: 19_17_1900048", onze)
+        )
+    }
+
+    /** Les deux graphies désignent la même machine : la double lecture ne doit
+     *  pas les compter pour deux. */
+    @Test fun `les deux decoupages du meme numero se normalisent pareil`() {
+        assertEquals(
+            SerialParser.normalise("19_17_1900048"),
+            SerialParser.normalise("19 17_1900048")
+        )
+    }
+
+    /**
      * Mais on ne recolle jamais une ligne qui porte un mot-clé : `SN:` collé au
      * numéro fabriquerait une chaîne plus longue, qui pourrait tomber pile dans
      * la longueur d'un autre format. Le mot-clé annonce le numéro, il n'en fait

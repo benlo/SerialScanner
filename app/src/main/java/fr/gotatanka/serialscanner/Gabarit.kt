@@ -75,7 +75,26 @@ data class Gabarit(
      * mais la conséquence est mesurée : la lecture part en vérification avec
      * une correction proposée, jamais réécrite d'office.
      */
-    val sansOI: Boolean = false
+    val sansOI: Boolean = false,
+    /**
+     * La référence aligne-t-elle trois caractères identiques.
+     *
+     * Le refus des triples écarte le bruit d'OCR — aucun numéro constructeur
+     * connu n'en aligne. Mais un numéro de lot de batterie externe se termine
+     * par `000048`, et la règle le condamnait. La référence tranche : si elle
+     * en porte un, c'est que cette étiquette en admet.
+     */
+    val tripleAdmis: Boolean = false,
+    /**
+     * Le numero de reference, tel qu'il a ete lu sur la photo d'etalonnage.
+     *
+     * **La source unique du format.** Longueur, alphabet, tolerance au triple
+     * s'en deduisent a la volee plutot que d'etre fiques champ par champ : sans
+     * ca, chaque nouveau trait obligeait a reetaloner tous les gabarits
+     * existants, ce qui est arrive deux fois de suite. Les trois champs
+     * ci-dessus restent lus pour les gabarits d'avant.
+     */
+    val numero: String = ""
 ) {
 
     /**
@@ -85,13 +104,31 @@ data class Gabarit(
      * lot retombe alors sur son profil de marque, comme avant.
      */
     val format: SerialParser.Format?
-        get() = if (longueur <= 0) null else SerialParser.Format(
-            longueurs = setOf(longueur),
+        get() {
+            val utile = SerialParser.canonique(numero)
+            val connu = utile.isNotEmpty()
+            val taille = if (connu) utile.length else longueur
+            if (taille <= 0) return null
+            return SerialParser.Format(
+            longueurs = setOf(taille),
             premiereLettre = false,
-            minChiffres = 1,
-            minLettres = 1,
-            sansOI = sansOI
-        )
+            // **Aucun mélange exigé.** Les profils marque réclament au moins une
+            // lettre et un chiffre pour écarter le bruit d'un balayage de tout
+            // le texte. Dans une zone de gabarit, ce garde-fou n'a plus d'objet :
+            // la zone dit *où* regarder et la longueur est exacte, ce qui
+            // contraint bien plus fort. L'exiger refusait les numéros
+            // entièrement numériques — relevé sur une batterie externe dont le
+            // `Lot n°` fait onze chiffres et pas une lettre.
+            minChiffres = 0,
+            minLettres = 0,
+            sansOI = if (connu) utile.none { it == 'O' || it == 'I' } else sansOI,
+            // Sans numero de reference — gabarit d'avant ce champ — on ne peut
+            // pas savoir si l'etiquette admet un triple. On ne refuse donc pas :
+            // la zone et la longueur exacte contraignent deja fortement, et
+            // refuser aurait condamne des gabarits deja etalonnes.
+            refuseTriple = if (connu) !SerialParser.aUnTriple(utile) else false
+            )
+        }
 
     /**
      * La zone SN projetée sur une image où le point clé a été trouvé.
@@ -142,6 +179,30 @@ data class Gabarit(
             kotlin.math.abs(w - autre.w) <= tolerance * 3 &&
             kotlin.math.abs(h - autre.h) <= tolerance
 
+    /**
+     * Le mot qui sert de point clé, parmi ceux d'une trame.
+     *
+     * **C'est l'ancre du gabarit qu'on cherche, pas un mot-clé connu.** Chercher
+     * `Serial`, `S/N` ou `SN:` reviendrait à n'accepter que les étiquettes que
+     * l'application connaissait déjà — ce que le gabarit existe justement pour
+     * dépasser. Une étiquette de batterie externe n'a aucun de ces mots, mais
+     * elle a `Lot n°`, et c'est un point clé parfaitement valable dès lors que
+     * l'opérateur l'a désigné.
+     *
+     * La comparaison est tolérante au bruit de reconnaissance : ponctuation
+     * ignorée, et un mot qui commence par l'ancre est accepté — ML Kit rend
+     * tantôt `Lot`, tantôt `Lotn`, tantôt `Lot n°`.
+     */
+    fun ancreParmi(mots: List<Mot>): Mot? {
+        val cible = SerialParser.canonique(ancre.trim().split(WHITESPACE).firstOrNull().orEmpty())
+        if (cible.isEmpty()) return null
+        return mots.firstOrNull { SerialParser.canonique(it.texte) == cible }
+            ?: mots.firstOrNull {
+                val c = SerialParser.canonique(it.texte)
+                cible.length >= 2 && (c.startsWith(cible) || cible.startsWith(c) && c.length >= 2)
+            }
+    }
+
     /** Un mot reconnu et sa boîte — de quoi raisonner sur la géométrie sans
      *  dépendre des types ML Kit, donc en JVM. */
     data class Mot(val texte: String, val boite: ScanRoi.Box)
@@ -149,6 +210,8 @@ data class Gabarit(
     companion object {
         /** Marge par défaut autour de la zone, en fraction de ses côtés. */
         const val MARGE = 0.15f
+
+        private val WHITESPACE = Regex("""\s+""")
 
         /**
          * Le gabarit déduit tout seul d'une photo de référence.
@@ -217,6 +280,8 @@ data class Gabarit(
                 refSN = boiteSN,
                 longueur = utile.length,
                 sansOI = utile.isNotEmpty() && utile.none { it == 'O' || it == 'I' },
+                tripleAdmis = SerialParser.aUnTriple(utile),
+                numero = numero.trim(),
                 ancre = ancre,
                 dx = (boiteSN.left - boiteAncre.left) / unite,
                 dy = (boiteSN.top - boiteAncre.top) / unite,

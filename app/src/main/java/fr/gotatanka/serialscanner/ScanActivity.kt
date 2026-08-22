@@ -281,8 +281,7 @@ class ScanActivity : AppCompatActivity() {
                 // prend effet dans la session même, sinon un lot dont la lecture
                 // textuelle échoue ne pourrait jamais s'amorcer.
                 val zone = (gabarit ?: gabaritDeduit)?.let { g ->
-                    mots.firstOrNull { SerialParser.voitAncre(it.texte) }
-                        ?.let { g.projeter(it.boite) }
+                    g.ancreParmi(mots)?.let { g.projeter(it.boite) }
                 }
                 val texte = textInRoi(result, zone ?: roi)
                 Log.d(

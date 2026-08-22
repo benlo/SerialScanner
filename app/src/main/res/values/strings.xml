@@ -55,8 +55,9 @@ Un gabarit dit où se trouve le numéro sur une étiquette. Étalonné une fois 
     <string name="gabarit_titre_modifier">Modifier le gabarit</string>
     <string name="gabarit_nom_hint">Nom — par exemple Asus X512U</string>
     <string name="gabarit_photographier">Photographier</string>
-    <string name="gabarit_choisir_photo">Galerie</string>
     <string name="gabarit_effacer">Effacer</string>
+    <string name="gabarit_effacer_ancre">Effacer le mot-clé</string>
+    <string name="gabarit_effacer_numero">Effacer le numéro</string>
     <string name="gabarit_enregistrer">Enregistrer</string>
     <string name="gabarit_consigne_photo">Choisir la photo d\'une étiquette de référence, bien nette et bien cadrée.</string>
     <string name="gabarit_consigne_ancre">Toucher le <b>mot-clé</b> — SN, S/N, Serial… Pincer pour agrandir.</string>

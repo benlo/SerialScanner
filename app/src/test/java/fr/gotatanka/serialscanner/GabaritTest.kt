@@ -231,6 +231,43 @@ class GabaritTest {
         assertFalse(SerialParser.isPlausible("K1N0CV03K34002H", g.format!!))
     }
 
+    /**
+     * Un numéro entièrement numérique passe.
+     *
+     * Relevé sur une batterie externe : `Lot n°: 19_17_1900048`, onze chiffres
+     * et pas une lettre. Les profils marque exigent un mélange pour écarter le
+     * bruit d'un balayage de tout le texte ; dans une zone de gabarit ce
+     * garde-fou n'a plus d'objet, et il refusait ce numéro-là.
+     */
+    @Test fun `un numero entierement numerique est accepte`() {
+        val g = Gabarit.depuisReference(
+            "g", "Batterie", "Lot", box(100, 100, 160, 140), box(180, 100, 500, 140),
+            "19_17_1900048"
+        )!!
+        assertEquals(11, g.longueur)
+        // `000` au milieu : la référence porte un triple, donc cette étiquette
+        // en admet. La règle générale reste, elle est juste levée ici.
+        assertTrue(g.tripleAdmis)
+        assertTrue(SerialParser.isPlausible("19_17_1900048", g.format!!))
+        // Le mot-clé est dans la zone et n'y change rien : trop court.
+        // Et le numéro ressort **avec ses tirets bas**, comme imprimé.
+        assertEquals(
+            listOf("19_17_1900048"),
+            SerialParser.dansZone("Lot n°: 19_17_1900048", g.format!!)
+        )
+    }
+
+    /** La règle du triple tient partout ailleurs : une référence qui n'en porte
+     *  pas continue de refuser trois caractères identiques, qui trahissent
+     *  presque toujours une lecture en difficulté. */
+    @Test fun `le triple reste refuse quand la reference n'en porte pas`() {
+        val g = Gabarit.depuisReference(
+            "g", "X", "Serial", box(100, 100, 200, 140), box(220, 100, 500, 140), "PW0479Q1"
+        )!!
+        assertFalse(g.tripleAdmis)
+        assertFalse(SerialParser.isPlausible("PW00079Q", g.format!!))
+    }
+
     /** Une référence qui emploie `O` ou `I` interdit la déduction inverse :
      *  on ne peut pas proscrire une lettre qu'on vient de voir. */
     @Test fun `une reference avec O ou I n'interdit pas ces lettres`() {
@@ -244,6 +281,82 @@ class GabaritTest {
      *  aucun : le lot retombe sur son profil, comme avant. */
     @Test fun `un gabarit sans longueur n'annonce aucun format`() {
         assertNull(asus.copy(longueur = 0).format)
+    }
+
+    /**
+     * Le numéro de référence est la **source unique** du format.
+     *
+     * Longueur, alphabet et tolérance au triple s'en déduisent à la volée. Sans
+     * ça, chaque nouveau trait de format obligeait à réétalonner tous les
+     * gabarits existants — c'est arrivé deux fois de suite le 22/08/2026.
+     */
+    @Test fun `le format se deduit du numero de reference`() {
+        val g = asus.copy(numero = "19_17_1900048", longueur = 0, sansOI = false, tripleAdmis = false)
+        val f = g.format!!
+        assertEquals(setOf(11), f.longueurs)
+        assertTrue(f.sansOI)
+        // `000` dans la référence : le triple est admis, malgré le champ à faux.
+        assertTrue(SerialParser.isPlausible("19_17_1900048", f))
+    }
+
+    /**
+     * Un gabarit d'avant ce champ ne refuse pas les triples.
+     *
+     * On ne peut pas savoir si son étiquette en admet, et refuser aurait
+     * condamné des gabarits déjà étalonnés — ce qui a obligé à en refaire deux
+     * fois. La zone et la longueur exacte contraignent déjà fortement.
+     */
+    @Test fun `un gabarit sans numero de reference ne refuse pas le triple`() {
+        val ancien = Gabarit("g", "Ancien", "Lot", dx = 1f, dy = 0f, w = 8f, h = 1f, longueur = 11)
+        assertTrue(SerialParser.isPlausible("19_17_1900048", ancien.format!!))
+    }
+
+    /**
+     * L'ancre cherchée au scan est **celle du gabarit**, pas un mot-clé connu.
+     *
+     * Chercher `Serial`, `S/N` ou `SN:` revenait à n'accepter que les étiquettes
+     * que l'application connaissait déjà — ce que le gabarit existe pour
+     * dépasser. Relevé sur une batterie externe : aucun de ces mots, mais un
+     * `Lot n°` que l'opérateur peut parfaitement désigner.
+     */
+    @Test fun `l'ancre cherchee est celle du gabarit`() {
+        val g = Gabarit("g", "Batterie", "Lot", dx = 1f, dy = 0f, w = 8f, h = 1f)
+        val mots = listOf(
+            mot("Made", box(10, 10, 90, 40)),
+            mot("Lot", box(100, 100, 160, 140)),
+            mot("19_17_1900048", box(180, 100, 500, 140))
+        )
+        assertEquals(box(100, 100, 160, 140), g.ancreParmi(mots)?.boite)
+    }
+
+    /** ML Kit rend tantôt `Lot`, tantôt `Lotn°` : la comparaison ignore la
+     *  ponctuation et accepte un mot qui commence par l'ancre. */
+    @Test fun `l'ancre se retrouve malgre le bruit de reconnaissance`() {
+        val g = Gabarit("g", "Batterie", "Lot", dx = 1f, dy = 0f, w = 8f, h = 1f)
+        assertEquals(
+            box(100, 100, 160, 140),
+            g.ancreParmi(listOf(mot("Lotn°:", box(100, 100, 160, 140))))?.boite
+        )
+    }
+
+    /** Sans mot correspondant, rien : plutôt aucune zone qu'une zone projetée
+     *  depuis un mot qui n'est pas le point clé. */
+    @Test fun `sans mot correspondant aucune ancre`() {
+        val g = Gabarit("g", "Batterie", "Lot", dx = 1f, dy = 0f, w = 8f, h = 1f)
+        assertNull(g.ancreParmi(listOf(mot("France", box(10, 10, 90, 40)))))
+        assertNull(g.ancreParmi(emptyList()))
+    }
+
+    /** Une ancre de plusieurs mots se retrouve par le premier : `Serial Number`
+     *  s'accroche à `Serial`, dont la boîte partage le bord gauche et la
+     *  hauteur — les deux seules choses dont la projection se sert. */
+    @Test fun `une ancre de plusieurs mots s'accroche au premier`() {
+        val g = Gabarit("g", "Yoga", "Serial Number", dx = 0f, dy = 1f, w = 6f, h = 1f)
+        val mots = listOf(
+            mot("Serial", box(100, 100, 200, 140)),
+            mot("Number", box(210, 100, 320, 140))
+        )
+        assertEquals(box(100, 100, 200, 140), g.ancreParmi(mots)?.boite)
     }
 
     private fun assertEquals(attendu: Int, obtenu: Int, tolerance: Int) =
