@@ -1,4 +1,4 @@
-package fr.gotatanka.macsn
+package fr.gotatanka.serialscanner
 
 import android.content.Context
 import android.graphics.Bitmap

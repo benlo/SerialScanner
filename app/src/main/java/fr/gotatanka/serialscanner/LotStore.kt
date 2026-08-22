@@ -1,4 +1,4 @@
-package fr.gotatanka.macsn
+package fr.gotatanka.serialscanner
 
 import org.json.JSONArray
 import org.json.JSONObject
@@ -7,7 +7,7 @@ import java.io.File
 /**
  * Persistance des lots en JSON dans le stockage interne.
  *
- * Un lot d'audit fait quelques dizaines de lignes : une base relationnelle
+ * Un lot fait quelques dizaines de lignes : une base relationnelle
  * apporterait ici un schéma et des migrations sans rien résoudre. Le fichier
  * est réécrit en entier via un temporaire renommé — une écriture interrompue
  * ne doit pas laisser un relevé tronqué.

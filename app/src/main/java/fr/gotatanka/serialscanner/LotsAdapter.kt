@@ -1,9 +1,9 @@
-package fr.gotatanka.macsn
+package fr.gotatanka.serialscanner
 
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
-import fr.gotatanka.macsn.databinding.ItemLotBinding
+import fr.gotatanka.serialscanner.databinding.ItemLotBinding
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter

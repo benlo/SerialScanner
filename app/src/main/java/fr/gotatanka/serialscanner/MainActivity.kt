@@ -1,4 +1,4 @@
-package fr.gotatanka.macsn
+package fr.gotatanka.serialscanner
 
 import android.content.Intent
 import android.graphics.Bitmap
@@ -27,7 +27,7 @@ import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.text.Text
 import com.google.mlkit.vision.text.TextRecognition
 import com.google.mlkit.vision.text.latin.TextRecognizerOptions
-import fr.gotatanka.macsn.databinding.ActivityMainBinding
+import fr.gotatanka.serialscanner.databinding.ActivityMainBinding
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine

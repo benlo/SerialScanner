@@ -27,7 +27,7 @@
         android:layout_weight="1"
         android:background="#000000">
 
-        <fr.gotatanka.macsn.VuePhoto
+        <fr.gotatanka.serialscanner.VuePhoto
             android:id="@+id/photo"
             android:layout_width="match_parent"
             android:layout_height="match_parent"

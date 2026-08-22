@@ -2,17 +2,17 @@
     <string name="app_name">SerialScanner</string>
 
     <!-- Lots -->
-    <string name="titre_lots">Lots d\'audit</string>
+    <string name="titre_lots">Mes lots</string>
     <string name="titre_nouveau_lot">Nouveau lot</string>
     <string name="action_nouveau_lot">Nouveau lot</string>
     <string name="lot_nom_defaut">Lot du %1$s</string>
     <string name="lot_nom_marque">%1$s du %2$s</string>
-    <string name="titre_marque">Marque du parc</string>
+    <string name="titre_marque">Marque des machines</string>
     <string name="marque_auto">Détecter sur l\'étiquette</string>
     <string name="action_marque">Changer la marque</string>
     <string name="lot_detail_fmt">%1$d machines · créé le %2$s</string>
     <string name="lot_detail_reprise">" · "%1$d" à reprendre"</string>
-    <string name="lots_vide">Aucun lot\n\nCréer un lot par palette, par client ou par journée</string>
+    <string name="lots_vide">Aucun lot\n\nCréer un lot par série de machines, par client ou par journée</string>
     <string name="menu_points">⋮</string>
     <string name="action_renommer">Renommer</string>
     <string name="action_supprimer_lot">Supprimer</string>

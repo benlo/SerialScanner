@@ -1,4 +1,4 @@
-package fr.gotatanka.macsn
+package fr.gotatanka.serialscanner
 
 import android.content.res.ColorStateList
 import android.net.Uri
@@ -7,7 +7,7 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.core.view.isVisible
 import androidx.recyclerview.widget.RecyclerView
-import fr.gotatanka.macsn.databinding.ItemReadingBinding
+import fr.gotatanka.serialscanner.databinding.ItemReadingBinding
 
 /**
  * La liste du lot : une ligne par machine, en lecture seule.

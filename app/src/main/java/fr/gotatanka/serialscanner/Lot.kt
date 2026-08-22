@@ -1,7 +1,7 @@
-package fr.gotatanka.macsn
+package fr.gotatanka.serialscanner
 
 /**
- * Un lot = une session d'audit : les machines d'une même palette, d'un même
+ * Un lot = une session de relevé : les machines d'une même palette, d'un même
  * client, d'une même journée. C'est l'unité qu'on exporte et qu'on remonte au
  * client, donc l'unité qui doit survivre à la fermeture de l'app.
  */

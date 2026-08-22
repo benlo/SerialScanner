@@ -1,4 +1,4 @@
-package fr.gotatanka.macsn
+package fr.gotatanka.serialscanner
 
 import android.content.Context
 import android.content.Intent
@@ -8,7 +8,7 @@ import android.text.Editable
 import android.text.TextWatcher
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.isVisible
-import fr.gotatanka.macsn.databinding.ActivityVerifBinding
+import fr.gotatanka.serialscanner.databinding.ActivityVerifBinding
 
 /**
  * Contrôle d'une lecture : sa photo et son numéro dans la même vue.

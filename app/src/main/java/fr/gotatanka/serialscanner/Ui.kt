@@ -1,4 +1,4 @@
-package fr.gotatanka.macsn
+package fr.gotatanka.serialscanner
 
 import android.view.View
 import androidx.core.content.ContextCompat

@@ -1,4 +1,4 @@
-package fr.gotatanka.macsn
+package fr.gotatanka.serialscanner
 
 /** D'où vient la lecture — la traçabilité demandée à l'export. */
 enum class Origine { SCAN, IMPORT, SAISIE }

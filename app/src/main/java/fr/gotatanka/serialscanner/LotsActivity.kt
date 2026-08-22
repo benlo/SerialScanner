@@ -1,4 +1,4 @@
-package fr.gotatanka.macsn
+package fr.gotatanka.serialscanner
 
 import android.content.Intent
 import android.os.Bundle
@@ -8,12 +8,12 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import androidx.core.view.isVisible
 import androidx.recyclerview.widget.DividerItemDecoration
 import androidx.recyclerview.widget.LinearLayoutManager
-import fr.gotatanka.macsn.databinding.ActivityLotsBinding
+import fr.gotatanka.serialscanner.databinding.ActivityLotsBinding
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
-/** Écran d'accueil : les lots d'audit. Un lot par palette, par client ou par
+/** Écran d'accueil : les lots de relevé. Un lot par palette, par client ou par
  *  journée, selon le découpage de l'atelier. */
 class LotsActivity : AppCompatActivity() {
 

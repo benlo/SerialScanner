@@ -1,4 +1,4 @@
-package fr.gotatanka.macsn
+package fr.gotatanka.serialscanner
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -25,7 +25,7 @@ class PhotosTest {
     @Test fun `le nom est extrait d'une vignette interne`() {
         assertEquals(
             "abc.jpg",
-            Photos.nomFichier("file:/data/user/0/fr.gotatanka.macsn/files/photos/abc.jpg")
+            Photos.nomFichier("file:/data/user/0/fr.gotatanka.serialscanner/files/photos/abc.jpg")
         )
     }
 

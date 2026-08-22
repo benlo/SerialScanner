@@ -1,4 +1,4 @@
-package fr.gotatanka.macsn
+package fr.gotatanka.serialscanner
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -181,6 +181,119 @@ class SerialParserTest {
         assertTrue(SerialParser.voitAncre("S/N"))
         assertTrue(SerialParser.voitAncre("Service Tag"))
         assertTrue(SerialParser.voitAncre("S/T"))
+        assertTrue(SerialParser.voitAncre("SN:"))
         assertFalse(SerialParser.voitAncre("Model A2337 EMC 3598"))
+    }
+
+    /**
+     * Étiquette Asus X512U, relevée sur machine réelle le 22/08/2026.
+     *
+     * Deux ruptures d'un coup par rapport aux capots Apple : le mot-clé est
+     * `SN:` sans barre oblique, et le numéro n'est pas sur sa ligne — la ligne
+     * du mot-clé se termine par la garantie, `24M`.
+     *
+     * ML Kit peut rendre `SN:` et `24M` dans une même `Text.Line` ou dans deux,
+     * selon l'écart horizontal qu'il tolère. Les deux découpages sont testés :
+     * la lecture ne doit dépendre d'aucun des deux.
+     */
+    private val asusMemeLigne = """
+        Model: X512U Notebook PC
+        Designed by ASUSTek Computer Inc. All rights reserved.
+        SN: 24M
+        K1N0CV03K34002H
+        MFD: 2019-01
+    """.trimIndent()
+
+    private val asusLignesSeparees = """
+        Model: X512U Notebook PC
+        Designed by ASUSTek Computer Inc. All rights reserved.
+        SN:
+        K1N0CV03K34002H
+        MFD: 2019-01
+    """.trimIndent()
+
+    @Test fun `l'etiquette asus se lit dans les deux decoupages`() {
+        assertEquals("K1N0CV03K34002H", SerialParser.parse(asusMemeLigne).serial)
+        assertEquals("K1N0CV03K34002H", SerialParser.parse(asusLignesSeparees).serial)
+    }
+
+    /** `ASUSTek` sur l'étiquette suffit à commander les 15 caractères : sans
+     *  lui le format Apple s'appliquerait et refuserait le numéro. */
+    @Test fun `l'etiquette asus commande le format asus`() {
+        assertEquals("Asus", SerialParser.profil(asusMemeLigne).nom)
+        assertTrue(SerialParser.isPlausible("K1N0CV03K34002H", SerialParser.ASUS))
+        assertFalse(SerialParser.isPlausible("K1N0CV03K34002H", SerialParser.APPLE))
+    }
+
+    /** Le numéro vient de la ligne d'en dessous : il est bon à prendre, mais
+     *  il doit partir en vérification plutôt qu'en validation muette. */
+    @Test fun `un numero lu sous le mot-cle est signale hors ligne`() {
+        assertTrue(SerialParser.horsLigne(asusMemeLigne, "K1N0CV03K34002H"))
+        assertFalse(SerialParser.horsLigne("Serial C02W61JZQ6LC", "C02W61JZQ6LC"))
+    }
+
+    /** La garantie et la date de fabrication encadrent le numéro. Ni l'une ni
+     *  l'autre ne doit être prise pour lui — c'est tout ce qui sépare ce repli
+     *  du balayage de tout le texte au format. */
+    @Test fun `le repli ne prend ni la garantie ni la date`() {
+        assertEquals(listOf("K1N0CV03K34002H"), SerialParser.candidats(asusMemeLigne))
+        // Une ligne suivante qui n'est pas nue ne donne rien.
+        assertNull(SerialParser.parse("ASUSTek\nSN: 24M\nMFD: K1N0CV03K34002H").serial)
+    }
+
+    /** Le repli ne s'ouvre que si la ligne du mot-clé n'a rien donné : sinon
+     *  un code quelconque sous une étiquette Apple normale ferait un second
+     *  candidat, et l'écran de scan refuserait de trancher. */
+    @Test fun `le repli reste ferme quand la ligne du mot-cle suffit`() {
+        val texte = "Serial C02W61JZQ6LC\nC02W61F3Q6LC"
+        assertEquals(listOf("C02W61JZQ6LC"), SerialParser.candidats(texte))
+    }
+
+    /**
+     * Sorties ML Kit authentiques, capturées au logcat le 22/08/2026 en visant
+     * l'étiquette du X512U. Sauts de ligne d'origine.
+     *
+     * Deux enseignements que la reconstitution ne donnait pas :
+     * - ML Kit met `SN:` seul sur sa ligne, la garantie `24M` sur une autre ;
+     * - l'ordre des lignes n'est pas garanti — sur la troisième, le numéro
+     *   précède le mot-clé.
+     */
+    private val mlkit1 = "Windows\n244\nSN:\nKINOCV03K34002H\n2013-44\nMFD:"
+    private val mlkit2 = "24M\nOA0 SN:\nKINOCV03K34002H\n2019-01\nMFD:"
+    private val mlkit3 = "EMSF3\nWindowst\n24M\n2019-01\nKINOCVO3K34002H\nSN\nA\nMED:"
+
+    /** Le mot-clé désigne bien le numéro sur ces sorties réelles. Asus doit
+     *  être imposé : `ASUSTek` n'est pas dans le cadre resserré. */
+    @Test fun `les sorties ML Kit reelles se lisent`() {
+        val asus = SerialParser.profilParNom("Asus")
+        assertEquals("KINOCV03K34002H", SerialParser.parse(mlkit1, asus).serial)
+        assertEquals("KINOCV03K34002H", SerialParser.parse(mlkit2, asus).serial)
+    }
+
+    /**
+     * Le cœur de l'affaire : ces deux lectures identiques sont **fausses**.
+     * La gravure porte `K1N0CV03K34002H`, ML Kit a lu les lettres `I` et `O`
+     * pour les chiffres `1` et `0`. La double lecture ne peut rien — seul
+     * l'alphabet du fabricant tranche.
+     */
+    @Test fun `la lecture asus fautive est signalee et corrigee`() {
+        val lu = "KINOCV03K34002H"
+        assertTrue(Controle.ambigu(lu, SerialParser.ASUS))
+        assertEquals("K1N0CV03K34002H", Controle.desambiguise(lu))
+    }
+
+    /** L'ordre des lignes n'étant pas garanti, le mot-clé arrive parfois après
+     *  le numéro. Rien ne doit sortir de cette image-là : c'est le rôle de la
+     *  double lecture d'attendre une image où l'ancrage tient. */
+    @Test fun `une image ou le mot-cle suit le numero ne rend rien`() {
+        assertNull(SerialParser.parse(mlkit3, SerialParser.profilParNom("Asus")).serial)
+    }
+
+    /** `SN` nu reste refusé sans ponctuation, et ne s'attrape pas en fin de
+     *  mot : c'est la raison pour laquelle il avait été écarté au départ. */
+    @Test fun `SN nu exige ses deux-points`() {
+        assertEquals("K1N0CV03K34002H", SerialParser.parse("ASUSTek SN: K1N0CV03K34002H").serial)
+        assertNull(SerialParser.parse("ASUSTek SN K1N0CV03K34002H").serial)
+        assertNull(SerialParser.parse("ASUSTek ASN: K1N0CV03K34002H").serial)
     }
 }

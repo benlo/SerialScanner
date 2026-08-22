@@ -1,11 +1,11 @@
-package fr.gotatanka.macsn
+package fr.gotatanka.serialscanner
 
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
 /**
- * Génération du CSV d'audit. Kotlin pur : le format part chez le client, une
+ * Génération du CSV du relevé. Kotlin pur : le format part chez le client, une
  * colonne décalée se voit tard et coûte cher, donc il se teste en JVM.
  *
  * Séparateur `;` — c'est ce qu'attend Excel en locale française, où la virgule

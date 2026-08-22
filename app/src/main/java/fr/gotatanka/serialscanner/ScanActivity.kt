@@ -1,4 +1,4 @@
-package fr.gotatanka.macsn
+package fr.gotatanka.serialscanner
 
 import android.Manifest
 import android.content.Context
@@ -34,7 +34,7 @@ import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.text.Text
 import com.google.mlkit.vision.text.TextRecognition
 import com.google.mlkit.vision.text.latin.TextRecognizerOptions
-import fr.gotatanka.macsn.databinding.ActivityScanBinding
+import fr.gotatanka.serialscanner.databinding.ActivityScanBinding
 import java.util.Locale
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
@@ -270,7 +270,7 @@ class ScanActivity : AppCompatActivity() {
                 // même erreur. C'est tout l'intérêt du délai.
                 if (SystemClock.elapsedRealtime() < prochaineLectureA) return@addOnSuccessListener
 
-                val serials = SerialParser.allSerials(texte, profil)
+                val serials = SerialParser.candidats(texte, profil)
                 if (serials.size > 1) {
                     // Plusieurs capots dans le cadre : on ne devine pas lequel est visé.
                     cadrage(faute, getString(R.string.scan_ambiguous, serials.size))
@@ -312,7 +312,10 @@ class ScanActivity : AppCompatActivity() {
                 // Une lettre que l'alphabet du fabricant proscrit est une
                 // erreur de lecture, même lue deux fois : deux passes de ML Kit
                 // sur la même gravure se trompent de la même façon.
-                val ambigu = Controle.ambigu(candidate, SerialParser.formatPour(texte, profil))
+                // Un numéro lu sous le mot-clé plutôt que sur sa ligne tient à
+                // un garde-fou plus mince : il part en vérification.
+                val ambigu = Controle.ambigu(candidate, SerialParser.formatPour(texte, profil)) ||
+                    SerialParser.horsLigne(texte, candidate, profil)
                 val enSequence = sequence.enCours
                 when (val etape = sequence.proposer(candidate, maintenant)) {
                     is DoubleLecture.Etape.Confirmer -> {

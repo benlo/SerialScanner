@@ -1,4 +1,4 @@
-package fr.gotatanka.macsn
+package fr.gotatanka.serialscanner
 
 /**
  * Les deux lectures d'une machine, **séparées par un délai**.

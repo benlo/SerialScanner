@@ -14,11 +14,11 @@ val signature = Properties().apply {
 }
 
 android {
-    namespace = "fr.gotatanka.macsn"
+    namespace = "fr.gotatanka.serialscanner"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "fr.gotatanka.macsn"
+        applicationId = "fr.gotatanka.serialscanner"
         minSdk = 26
         targetSdk = 35
         versionCode = 1

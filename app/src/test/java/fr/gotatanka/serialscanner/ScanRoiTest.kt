@@ -1,4 +1,4 @@
-package fr.gotatanka.macsn
+package fr.gotatanka.serialscanner
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse

@@ -1,4 +1,4 @@
-package fr.gotatanka.macsn
+package fr.gotatanka.serialscanner
 
 /**
  * Contrôle à l'œil d'un numéro déjà lu.

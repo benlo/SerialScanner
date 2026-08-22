@@ -1,4 +1,4 @@
-package fr.gotatanka.macsn
+package fr.gotatanka.serialscanner
 
 /**
  * Extraction du numéro de série depuis le texte brut renvoyé par ML Kit.
@@ -49,8 +49,18 @@ object SerialParser {
     /** Lenovo ThinkPad : 8 caractères. */
     val LENOVO = Format(setOf(8), premiereLettre = false, minChiffres = 1, minLettres = 1)
 
-    /** Asus : 15 caractères. **Longueur à confirmer sur un parc réel.** */
-    val ASUS = Format(setOf(15), premiereLettre = false, minChiffres = 1, minLettres = 1)
+    /**
+     * Asus : 15 caractères — confirmé sur un X512U, `K1N0CV03K34002H`.
+     *
+     * `sansOI` acquis au même relevé : ML Kit a rendu deux fois `KINOCV03K34002H`
+     * là où la gravure porte `K1N0CV03K34002H`. Le numéro vrai emploie le
+     * chiffre `0` et le chiffre `1` aux deux positions où la lecture a vu les
+     * lettres — et n'emploie ni `O` ni `I` ailleurs. Deux lectures identiques
+     * ne protègent pas de ça : ML Kit se trompe deux fois pareil.
+     */
+    val ASUS = Format(
+        setOf(15), premiereLettre = false, minChiffres = 1, minLettres = 1, sansOI = true
+    )
 
     /**
      * Ce que l'étiquette dit d'elle-même.
@@ -93,10 +103,20 @@ object SerialParser {
      * de 12 caractères annoncé par « Service Tag » verrait ses 7 premiers
      * capturés et validés — un numéro tronqué, accepté comme authentique.
      */
+    /**
+     * `SN` nu, mais seulement collé à ses deux-points.
+     *
+     * Asus imprime `SN:` là où les autres écrivent `S/N` — vérifié sur un
+     * X512U. Le `SN` sans ponctuation reste refusé, il traverserait n'importe
+     * quel mot ; c'est le signe de ponctuation qui fait l'étiquette, et le
+     * garde-devant interdit de l'attraper en fin de mot (`...ASN:`).
+     */
+    private const val SN_NU = """(?<![A-Z0-9])SN(?=\s*[:.#])"""
+
     private val ANCRES = listOf(
-        // Serial, S/N, S.N, S-N → longueur donnée par le profil de l'étiquette
+        // Serial, S/N, S.N, S-N, SN: → longueur donnée par le profil de l'étiquette
         Ancre(
-            Regex("""(?:S[E38][RDPB][I1L]?A[L1I]|S\s*[/.\-]\s*N)\s*[:.#]?\s*([A-Z0-9]{7,15})(?![A-Z0-9])"""),
+            Regex("""(?:S[E38][RDPB][I1L]?A[L1I]|S\s*[/.\-]\s*N|$SN_NU)\s*[:.#]?\s*([A-Z0-9]{7,15})(?![A-Z0-9])"""),
             null
         ),
         // Service Tag, S/T, SNID → le mot-clé suffit, il n'existe qu'en 7
@@ -110,7 +130,7 @@ object SerialParser {
      *  bonne ligne même si les caractères ne sont pas encore lisibles. C'est ce
      *  qui dit à la rampe de zoom de s'arrêter là. */
     private val ANCRE_SEULE =
-        Regex("""S[E38][RDPB][I1L]?A[L1I]|S\s*[/.\-]\s*[NT]|SERV[I1]CE\s*TAG|SN[I1]D""")
+        Regex("""S[E38][RDPB][I1L]?A[L1I]|S\s*[/.\-]\s*[NT]|$SN_NU|SERV[I1]CE\s*TAG|SN[I1]D""")
 
     private val MODEL = Regex("""M[O0]DEL\s*(A\d{4})""")
     private val EMC = Regex("""EMC\s*(\d{4})""")
@@ -128,7 +148,7 @@ object SerialParser {
 
     fun parse(rawText: String, impose: Profil? = null): Reading {
         val up = rawText.uppercase()
-        val serials = allSerials(rawText, impose)
+        val serials = candidats(rawText, impose)
         // Un seul numéro visible, sinon rien : trancher entre deux candidats
         // reviendrait à rendre un numéro que l'opérateur ne visait pas.
         val serial = serials.singleOrNull()
@@ -136,7 +156,19 @@ object SerialParser {
     }
 
     /**
-     * Tous les numéros plausibles du texte, dédoublonnés.
+     * Les numéros retenus : ceux de la ligne du mot-clé, ou **à défaut** ceux
+     * de la ligne d'en dessous.
+     *
+     * Le repli ne s'ouvre que si la ligne du mot-clé n'a rien donné, jamais en
+     * complément : sinon une étiquette qui porte son numéro sur sa ligne et un
+     * code quelconque en dessous rendrait deux candidats, et l'écran de scan
+     * refuserait de trancher là où il n'y a pourtant qu'un numéro.
+     */
+    fun candidats(rawText: String, impose: Profil? = null): List<String> =
+        allSerials(rawText, impose).ifEmpty { serialsLigneSuivante(rawText, impose) }
+
+    /**
+     * Tous les numéros plausibles portés par la ligne du mot-clé, dédoublonnés.
      *
      * ML Kit rend l'intégralité du texte du champ : plusieurs capots dans le
      * cadre, ou une planche de test, produisent plusieurs ancres. L'appelant
@@ -158,6 +190,47 @@ object SerialParser {
             }
             .distinct()
     }
+
+    /** Une ligne qui ne porte qu'un seul bloc alphanumérique, rien d'autre. */
+    private val LIGNE_NUE = Regex("""^([A-Z0-9]{7,15})$""")
+
+    /**
+     * Les numéros portés par la ligne **suivant** le mot-clé.
+     *
+     * Asus dispose l'étiquette sur trois lignes : `SN:` suivi de la garantie
+     * (`24M`), le numéro seul en dessous, puis `MFD:` et la date. La ligne du
+     * mot-clé ne porte donc aucun numéro, et l'ancrage strict rend la lecture
+     * impossible — c'est ce qu'a montré un X512U.
+     *
+     * L'ancrage n'est pas abandonné : c'est toujours le mot-clé qui désigne la
+     * ligne, on l'autorise seulement à désigner celle d'en dessous. Deux
+     * garde-fous le séparent du balayage de tout le texte au format, qui
+     * produisait des numéros plausibles et faux :
+     *
+     * - la ligne doit être **nue**, un seul bloc alphanumérique et rien
+     *   d'autre. `24M` échoue sur la longueur, `MFD: 2019-01` sur la nudité ;
+     * - l'appelant ne s'en sert que si la ligne du mot-clé n'a rien donné.
+     *
+     * Une lecture obtenue ainsi vaut moins qu'une lecture ancrée sur sa propre
+     * ligne : [horsLigne] permet de la marquer incertaine.
+     */
+    fun serialsLigneSuivante(rawText: String, impose: Profil? = null): List<String> {
+        val format = (impose ?: profil(rawText)).format
+        val lignes = rawText.uppercase().lines().map { it.trim() }
+        return lignes.indices
+            .filter { ANCRE_SEULE.containsMatchIn(lignes[it]) }
+            .mapNotNull { lignes.getOrNull(it + 1) }
+            .mapNotNull { LIGNE_NUE.find(it)?.groupValues?.get(1) }
+            .map { fixPrefix(it) }
+            .filter { isPlausible(it, format) }
+            .distinct()
+    }
+
+    /** Ce numéro n'a été trouvé que sous le mot-clé, pas sur sa ligne : la
+     *  lecture est bonne à prendre, mais elle mérite l'œil de l'opérateur. */
+    fun horsLigne(rawText: String, serial: String, impose: Profil? = null): Boolean =
+        serial !in allSerials(rawText, impose) &&
+            serial in serialsLigneSuivante(rawText, impose)
 
     fun voitAncre(rawText: String): Boolean = ANCRE_SEULE.containsMatchIn(rawText.uppercase())
 

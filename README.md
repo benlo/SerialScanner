@@ -1,8 +1,9 @@
 # SerialScanner
 
-Relevé des numéros de série de portables au téléphone, pour l'audit d'un lot en
-reconditionnement — trente machines fermées, non démarrées, dont il faut sortir
-la liste des numéros sans les taper à la main.
+Relever au téléphone les numéros de série d'un lot d'ordinateurs portables,
+sans les taper à la main — machines fermées, non démarrées, numéro gravé sous le
+capot ou collé sur l'étiquette. Inventaire d'un parc, retour de location, entrée
+d'un lot en reconditionnement : le geste est le même, trente capots à lire.
 
 Application Android, hors ligne, sans compte ni serveur.
 
@@ -30,6 +31,11 @@ Play Store, pas un symptôme.
 
 Les versions suivantes s'installent par-dessus en gardant les lots enregistrés,
 tant qu'elles sont signées avec la même clé.
+
+**Venant de la 1.0** : l'identifiant de l'application a changé après cette
+version. Android voit donc une application différente, qui s'installe à côté
+au lieu de remplacer — il faut **désinstaller la 1.0 d'abord**, et ses lots
+partent avec elle. Exporter les CSV avant.
 
 La limite pratique n'est ni la version d'Android ni le modèle de téléphone,
 c'est l'optique : un appareil qui ne fait pas le point à vingt centimètres lira
