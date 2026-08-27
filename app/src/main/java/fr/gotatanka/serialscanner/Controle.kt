@@ -35,6 +35,59 @@ object Controle {
         serial.map { SUBSTITUTIONS[it] ?: it }.joinToString("")
 
     /**
+     * La correction `O→0` / `I→1` à proposer au contrôle, ou null quand il n'y
+     * a rien à proposer.
+     *
+     * **Non gardée par [SerialParser.Format.sansOI], contrairement à [ambigu].** Les deux ne
+     * disent pas la même chose : `ambigu` *affirme* que la lecture est fausse,
+     * et cette affirmation doit rester adossée à un alphabet connu ; proposer
+     * ne coûte qu'un regard, la photo étant juste au-dessus.
+     *
+     * Le cas du 25/08 dit pourquoi la garde était de trop. Le lot Asus avait
+     * déduit son gabarit tout seul sur une trame où ML Kit lisait
+     * `KINOCVO3K34002H` là où l'étiquette porte `K1N0CV03K34002H`. Le gabarit
+     * a donc enregistré comme *fait de référence* un numéro contenant O et I,
+     * d'où `sansOI = false` — qui écrase le profil Asus, lequel porte pourtant
+     * `sansOI = true`. La lecture fausse s'était immunisée elle-même : plus
+     * aucune correction n'était proposée sur aucune ligne du lot, précisément
+     * là où toutes en avaient besoin.
+     *
+     * Une garde qui dépend d'un étalonnage ne protège de rien quand c'est
+     * l'étalonnage qui est faux. Proposer sans garde ne peut pas produire ce
+     * blocage-là, et ne réécrit toujours rien.
+     */
+    fun proposition(serial: String?): String? {
+        val lu = serial ?: return null
+        return desambiguise(lu).takeIf { it != lu }
+    }
+
+    /**
+     * Le numéro corrigé doit-il remplacer la référence du gabarit du lot.
+     *
+     * Vrai quand la référence n'est que la **lecture fausse du même numéro** :
+     * mêmes caractères une fois les lettres proscrites ramenées à leur chiffre,
+     * et pourtant pas identiques. C'est la signature exacte d'un gabarit déduit
+     * tout seul sur une trame où ML Kit avait lu `O` pour `0` et `I` pour `1`.
+     *
+     * La condition est volontairement étroite. Corriger le numéro de la
+     * septième machine d'un lot ne doit rien réétalonner du tout : son numéro
+     * est simplement *un autre numéro*, et écraser la référence avec lui
+     * fausserait longueur et alphabet pour tout le reste du lot. Seule
+     * l'égalité après désambiguïsation dit « c'est la même étiquette, mal
+     * transcrite ».
+     *
+     * Ce qu'on remplace est le **fait** — le numéro de référence — et non ses
+     * conséquences : longueur, alphabet et tolérance au triple s'en déduisent
+     * ensuite tout seuls. Voir [Gabarit.format].
+     */
+    fun reetalonne(reference: String, corrige: String): Boolean {
+        val ref = SerialParser.canonique(reference)
+        val neuf = SerialParser.canonique(corrige)
+        if (ref.isEmpty() || neuf.isEmpty() || ref == neuf) return false
+        return desambiguise(ref) == desambiguise(neuf)
+    }
+
+    /**
      * Les positions du numéro où l'œil doit aller en premier.
      *
      * Un opérateur qui compare douze caractères à une photo les balaie tous

@@ -2,6 +2,7 @@ package fr.gotatanka.serialscanner
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -200,5 +201,61 @@ class ControleTest {
         assertEquals(emptyList<Int>(), Controle.positionsConfusables("MD6M"))
         assertEquals("MD6M", SerialParser.normalise("MD6M"))
         assertEquals("MDEM", SerialParser.normalise("MDEM"))
+    }
+
+    /** Le cas du 25/08 : l'étiquette Asus porte `K1N0CV03K34002H`, ML Kit
+     *  rend les deux chiffres en lettres. C'est la correction qu'on veut voir
+     *  proposée à la relecture. */
+    @Test fun `la proposition ramene les lettres a leur chiffre`() {
+        assertEquals("K1N0CV03K34002H", Controle.proposition("KINOCVO3K34002H"))
+    }
+
+    /** Rien à proposer : le bouton doit rester caché plutôt que d'offrir de
+     *  remplacer un numéro par lui-même. */
+    @Test fun `sans O ni I il n'y a rien a proposer`() {
+        assertNull(Controle.proposition("C02W61JZQ6LC"))
+        assertNull(Controle.proposition(""))
+        assertNull(Controle.proposition(null))
+    }
+
+    /**
+     * Le nœud du défaut : le gabarit du lot avait été étalonné sur la lecture
+     * fausse, donc son format annonce `sansOI = false` et [Controle.ambigu] se
+     * tait. La proposition, elle, ne dépend pas de cet étalonnage — sinon la
+     * lecture fausse continuerait de s'immuniser elle-même.
+     */
+    @Test fun `la proposition survit a un format etalonne sur la lecture fausse`() {
+        val fausseReference = SerialParser.Format(
+            longueurs = setOf(15), premiereLettre = false,
+            minChiffres = 0, minLettres = 0, sansOI = false
+        )
+        assertFalse(Controle.ambigu("KINOCVO3K34002H", fausseReference))
+        assertEquals("K1N0CV03K34002H", Controle.proposition("KINOCVO3K34002H"))
+    }
+
+    /** Le gabarit du lot Asus, étalonné tout seul sur la lecture fausse : c'est
+     *  exactement le cas où il faut proposer de le refaire. */
+    @Test fun `une reference mal lue se reetalonne sur le numero corrige`() {
+        assertTrue(Controle.reetalonne("KINOCVO3K34002H", "K1N0CV03K34002H"))
+    }
+
+    /** Corriger la septième machine d'un lot ne réétalonne rien : son numéro
+     *  est un autre numéro, et écraser la référence avec lui fausserait
+     *  longueur et alphabet pour tout le reste du lot. */
+    @Test fun `un autre numero du lot ne reetalonne pas`() {
+        assertFalse(Controle.reetalonne("K1N0CV03K34002H", "K1N0CV03K34009B"))
+        assertFalse(Controle.reetalonne("C02W61JZQ6LC", "C02W61F3Q6LC"))
+    }
+
+    @Test fun `une reference deja juste ne se reetalonne pas`() {
+        assertFalse(Controle.reetalonne("K1N0CV03K34002H", "K1N0CV03K34002H"))
+        assertFalse(Controle.reetalonne("", "K1N0CV03K34002H"))
+        assertFalse(Controle.reetalonne("K1N0CV03K34002H", ""))
+    }
+
+    /** La ponctuation d'étiquette ne fait pas partie du numéro : `PW-0479Q1`
+     *  et `PW0479Q1` sont la même référence, pas un réétalonnage. */
+    @Test fun `la ponctuation ne declenche pas un reetalonnage`() {
+        assertFalse(Controle.reetalonne("PW-0479Q1", "PW0479Q1"))
     }
 }

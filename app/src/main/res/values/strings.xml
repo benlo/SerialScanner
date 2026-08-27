@@ -119,6 +119,10 @@ Le retirer de ces lots avant de le supprimer.</string>
     <string name="verif_alerte_doublon">déjà relevé dans ce lot</string>
     <string name="verif_alerte_proche">proche de %1$s — même machine ?</string>
     <string name="verif_corriger">Corriger en %1$s</string>
+    <string name="verif_reetalonner_titre">Réétalonner le gabarit ?</string>
+    <string name="verif_reetalonner">Le gabarit du lot a été étalonné sur « %1$s », qui est la même étiquette mal lue. Le refaire sur « %2$s » corrigera la longueur et l\'alphabet attendus pour tout le lot.</string>
+    <string name="verif_reetalonner_ok">Réétalonner</string>
+    <string name="verif_reetalonne">Gabarit réétalonné sur %1$s</string>
     <string name="controle_fini_titre">Contrôle terminé</string>
     <string name="controle_fini_ok">Les %1$d lignes du lot ont été contrôlées à la photo.</string>
     <string name="controle_fini_reste">%1$d lignes contrôlées, dont %2$d à reprendre.</string>

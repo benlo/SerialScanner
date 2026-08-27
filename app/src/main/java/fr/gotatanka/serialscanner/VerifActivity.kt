@@ -6,8 +6,10 @@ import android.net.Uri
 import android.os.Bundle
 import android.text.Editable
 import android.text.TextWatcher
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.isVisible
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import fr.gotatanka.serialscanner.databinding.ActivityVerifBinding
 
 /**
@@ -96,6 +98,7 @@ class VerifActivity : AppCompatActivity() {
             val corrige = correctionProposee ?: return@setOnClickListener
             binding.serial.setText(corrige)
             binding.serial.setSelection(corrige.length)
+            proposerReetalonnage(corrige)
         }
         binding.photo.setOnClickListener { /* absorbe le tap, le zoom fait le reste */ }
 
@@ -228,15 +231,50 @@ class VerifActivity : AppCompatActivity() {
         // lignes qu'un opérateur a déjà confirmées — là où l'alphabet ne fait
         // qu'appliquer une règle générale.
         val parMasque = Controle.Alerte.MASQUE in alertes
-        val ambigu = Controle.Alerte.AMBIGU in alertes
-        binding.btnCorriger.isVisible = parMasque || ambigu
-        correctionProposee = null
-        if (parMasque || ambigu) {
-            val propose =
-                if (parMasque) masque!!.corriger(serial) else Controle.desambiguise(serial)
-            correctionProposee = propose
+        // La désambiguïsation se propose dès qu'il y a un O ou un I à ramener
+        // à son chiffre, sans attendre que l'alphabet les proscrive : voir
+        // [Controle.proposition]. L'alerte rouge, elle, reste adossée à
+        // `sansOI` — proposer et affirmer ne sont pas le même acte.
+        val propose = if (parMasque) masque!!.corriger(serial)
+        else Controle.proposition(serial)
+        correctionProposee = propose
+        binding.btnCorriger.isVisible = propose != null
+        if (propose != null) {
             binding.btnCorriger.text = getString(R.string.verif_corriger, propose)
         }
+    }
+
+    /**
+     * Propose de refaire l'étalonnage du gabarit sur le numéro qu'on vient de
+     * corriger, quand la référence n'était que la lecture fausse du même.
+     *
+     * Corriger la ligne ne corrigeait pas la référence : longueur, alphabet et
+     * tolérance au triple continuaient de se déduire de la lecture fausse, et
+     * le lot entier restait privé de son alerte — c'est ce qui a masqué les
+     * `O` et les `I` de tout le lot Asus du 25/08.
+     *
+     * Proposé, jamais fait d'office. Réétalonner change ce que l'app attend de
+     * **toutes** les machines du lot : c'est une décision d'opérateur, prise
+     * la photo sous les yeux, pas un effet de bord d'une correction de ligne.
+     */
+    private fun proposerReetalonnage(corrige: String) {
+        val gabarit = Depot.gabaritDuLot(this, lot) ?: return
+        if (!Controle.reetalonne(gabarit.numero, corrige)) return
+        MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.verif_reetalonner_titre)
+            .setMessage(getString(R.string.verif_reetalonner, gabarit.numero, corrige))
+            .setPositiveButton(R.string.verif_reetalonner_ok) { _, _ ->
+                // Le fait, pas ses conséquences : le format se redéduit seul.
+                Depot.modifierGabarit(this, gabarit.copy(numero = corrige))
+                Toast.makeText(
+                    this, getString(R.string.verif_reetalonne, corrige), Toast.LENGTH_LONG
+                ).show()
+                // Le format vient de changer : l'alerte et la proposition de
+                // cette ligne doivent être recalculées avec.
+                majAlertes(binding.serial.text.toString())
+            }
+            .setNegativeButton(R.string.action_annuler, null)
+            .show()
     }
 
     private fun origine(r: Reading) = getString(

@@ -96,16 +96,29 @@
             android:textSize="13sp"
             android:visibility="gone" />
 
+        <!-- Police à zéro pointé, comme la ligne du numéro : ce bouton propose
+             une correction dont tout l'objet est de distinguer 0 de O et 1 de
+             I. L'écrire dans une police qui les confond rendait la proposition
+             illisible — signalé le 25/08, « les 0 semblaient des O ». -->
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnCorriger"
             style="@style/Widget.Material3.Button.TextButton"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginBottom="4dp"
+            android:fontFamily="@font/jetbrains_mono"
+            android:textAllCaps="false"
             android:visibility="gone" />
 
         <!-- Statut explicite : après contrôle à l'œil, c'est l'opérateur qui
-             décide, pas le score de l'OCR. -->
+             décide, pas le score de l'OCR.
+
+             « Confirmé » est à droite, et c'est de l'ergonomie, pas du style :
+             c'est le geste de loin le plus fréquent d'un contrôle — la plupart
+             des lignes sont bonnes — et le pouce d'une main qui tient le
+             téléphone l'atteint sans que la main se déplace. « À reprendre »
+             reste à gauche, moins accessible, ce qui va bien à un choix rare
+             et lourd de conséquence. -->
         <com.google.android.material.button.MaterialButtonToggleGroup
             android:id="@+id/statut"
             android:layout_width="match_parent"
@@ -115,15 +128,6 @@
             app:singleSelection="true">
 
             <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnOk"
-                style="@style/Widget.Material3.Button.OutlinedButton"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:saveEnabled="false"
-                android:text="@string/verif_confirme" />
-
-            <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnRevoir"
                 style="@style/Widget.Material3.Button.OutlinedButton"
                 android:layout_width="0dp"
@@ -131,6 +135,15 @@
                 android:layout_weight="1"
                 android:saveEnabled="false"
                 android:text="@string/verif_a_reprendre" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnOk"
+                style="@style/Widget.Material3.Button.OutlinedButton"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:saveEnabled="false"
+                android:text="@string/verif_confirme" />
         </com.google.android.material.button.MaterialButtonToggleGroup>
 
 
