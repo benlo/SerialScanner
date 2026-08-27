@@ -358,13 +358,47 @@ class SerialParserTest {
         )
     }
 
-    /** ML Kit sépare parfois le numéro en deux mots : la ligne entière reste
-     *  candidate, avec son séparateur. */
+    /**
+     * ML Kit sépare parfois le numéro en deux mots : la ligne entière reste
+     * candidate, et se recolle **sans rien inventer**. Aucun des deux mots ne
+     * porte de séparateur, donc rien ne dit qu'il y en a un : ce qui est
+     * enregistré est la forme sans ponctuation, la seule qu'on ait lue.
+     */
     @Test fun `un numero coupe en deux mots se recompose`() {
         assertEquals(
-            listOf("PW 0479Q1"),
+            listOf("PW0479Q1"),
             SerialParser.dansZone("PW 0479Q1", SerialParser.LENOVO)
         )
+    }
+
+    /**
+     * Le défaut relevé le 26/08 sur un capot Apple, machine en main : ML Kit
+     * rend `C02FL58DMD 6M`, treize caractères enregistrés pour un format qui en
+     * annonce douze. L'opérateur a corrigé à la main, et la trame précédente,
+     * qui avait rendu le numéro d'un bloc, avait été comptée divergente.
+     */
+    @Test fun `l'espace du decoupage n'entre pas dans le numero`() {
+        // Le format vient du gabarit du lot, donc la longueur est **exacte** —
+        // et c'est elle qui écarte `C02FL58DMD` seul, dix caractères, soit une
+        // longueur Apple parfaitement valide. Sous le format Apple des deux
+        // longueurs, cette zone rend deux candidats et l'écran refuse de
+        // trancher ; sous le gabarit, un seul survit.
+        val douze = SerialParser.Format(
+            longueurs = setOf(12), premiereLettre = true, minChiffres = 3, minLettres = 3
+        )
+        assertEquals(
+            listOf("C02FL58DMD6M"),
+            SerialParser.dansZone("C02FL58DMD 6M", douze)
+        )
+        // Les deux découpages de la même gravure donnent la même chaîne : plus
+        // de divergence, donc plus d'incertain à la double lecture.
+        assertEquals(
+            SerialParser.dansZone("C02FL58DMD6M", douze),
+            SerialParser.dansZone("C02FL58DMD 6M", douze)
+        )
+        // Le préfixe seul reste un numéro tronqué : sans la longueur exacte, il
+        // passerait pour un numéro randomisé de dix.
+        assertTrue(SerialParser.isPlausible("C02FL58DMD", SerialParser.APPLE))
     }
 
     /**
@@ -380,14 +414,28 @@ class SerialParserTest {
             longueurs = setOf(11), premiereLettre = false,
             minChiffres = 0, minLettres = 0, refuseTriple = false
         )
+        // Le numéro emploie déjà un tiret bas : c'est lui qui recolle, et la
+        // chaîne obtenue est celle qui est imprimée sur l'étiquette.
         assertEquals(
-            listOf("19 17_1900048"),
+            listOf("19_17_1900048"),
             SerialParser.dansZone("Lot n°: 19 17_1900048", onze)
         )
         // Et d'un bloc, la même ligne rend le numéro tel qu'imprimé.
         assertEquals(
             listOf("19_17_1900048"),
             SerialParser.dansZone("Lot n°: 19_17_1900048", onze)
+        )
+    }
+
+    /** Les deux découpages rendent désormais la même chaîne, mot à mot. */
+    @Test fun `les deux decoupages du meme numero rendent la meme chaine`() {
+        val onze = SerialParser.Format(
+            longueurs = setOf(11), premiereLettre = false,
+            minChiffres = 0, minLettres = 0, refuseTriple = false
+        )
+        assertEquals(
+            SerialParser.dansZone("Lot n°: 19_17_1900048", onze),
+            SerialParser.dansZone("Lot n°: 19 17_1900048", onze)
         )
     }
 

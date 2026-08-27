@@ -262,10 +262,11 @@ object SerialParser {
             val ligne = brute.trim()
             if (ligne.isEmpty()) continue
             // **Toutes les suites de mots consécutifs**, mot isolé et ligne
-            // entière compris, et **tels qu'imprimés** : c'est cette forme-là
+            // entière compris, et **telles qu'imprimées** : c'est cette forme-là
             // qui sera enregistrée, séparateur compris. `isPlausible` juge sur
             // la forme sans ponctuation, donc `PW-0479Q1` passe le format Lenovo
-            // à huit caractères sans qu'on ait à le mutiler.
+            // à huit caractères sans qu'on ait à le mutiler. Ce que ML Kit a
+            // séparé se recolle par [liant] — jamais par l'espace du découpage.
             //
             // ML Kit ne découpe pas deux fois pareil : `19_17_1900048` sort
             // tantôt d'un bloc, tantôt en `19` et `17_1900048`, le premier tiret
@@ -280,13 +281,15 @@ object SerialParser {
             val mots = ligne.split(Regex("\\s+")).filter { it.isNotEmpty() }
             for (debut in mots.indices) {
                 for (fin in debut until mots.size) {
-                    val suite = mots.subList(debut, fin + 1).joinToString(" ")
+                    val suite = mots.subList(debut, fin + 1)
                     // Jamais à travers un mot-clé : recoller `SN:` au numéro
                     // fabriquerait une chaîne plus longue, qui pourrait tomber
                     // pile dans la longueur d'un autre format. Le mot-clé
-                    // annonce le numéro, il n'en fait pas partie.
-                    if (fin > debut && voitAncre(suite)) break
-                    candidats += suite
+                    // annonce le numéro, il n'en fait pas partie. Le mot-clé se
+                    // cherche sur la forme espacée, celle que ML Kit a rendue :
+                    // recoller d'abord ferait passer `SN:` au travers.
+                    if (fin > debut && voitAncre(suite.joinToString(" "))) break
+                    candidats += suite.joinToString(liant(suite))
                 }
             }
         }
@@ -294,6 +297,34 @@ object SerialParser {
             .map { fixPrefix(it) }
             .filter { isPlausible(it, format) }
             .distinct()
+    }
+
+    /**
+     * Par quoi recoller des mots que ML Kit a séparés.
+     *
+     * **L'espace du recollement n'est jamais une information** : elle vient du
+     * découpage, pas de l'étiquette. Relevé du 26/08 sur un capot Apple, ML Kit
+     * a rendu `C02FL58DMD 6M` là où la gravure porte `C02FL58DMD6M` — treize
+     * caractères enregistrés pour un format qui en annonce douze, corrigés à la
+     * main par l'opérateur, et comptés comme divergents de la trame précédente,
+     * donc marqués incertains pour rien. Un numéro Apple ne porte aucun
+     * séparateur, et rien dans la trame n'en montrait un.
+     *
+     * Le séparateur que le numéro emploie **déjà**, lui, est imprimé : ML Kit
+     * rend `19_17_1900048` en `19` et `17_1900048`, le premier tiret bas vu
+     * comme une espace. Recoller au tiret bas rend le numéro tel qu'il est
+     * imprimé, là où l'espace en inventait un autre.
+     *
+     * Faute d'un séparateur unique **à l'intérieur** des mots — la ponctuation
+     * de bord est un artefact de lecture, pas un liant —, on recolle à rien :
+     * c'est la forme sans ponctuation, celle que [canonique] tient déjà pour le
+     * numéro. On ne devine pas ce qu'on n'a pas lu.
+     */
+    private fun liant(mots: List<String>): String {
+        val dedans = mots
+            .flatMap { mot -> mot.trim { !it.isLetterOrDigit() }.filterNot { it.isLetterOrDigit() }.toList() }
+            .distinct()
+        return dedans.singleOrNull()?.toString() ?: ""
     }
 
     fun voitAncre(rawText: String): Boolean = ANCRE_SEULE.containsMatchIn(rawText.uppercase())
