@@ -38,7 +38,9 @@ import fr.gotatanka.serialscanner.databinding.ActivityScanBinding
 import java.util.Locale
 import java.util.UUID
 import java.util.concurrent.ExecutorService
-import java.util.concurrent.Executors
+import java.util.concurrent.LinkedBlockingQueue
+import java.util.concurrent.ThreadPoolExecutor
+import java.util.concurrent.TimeUnit
 
 class ScanActivity : AppCompatActivity() {
 
@@ -124,7 +126,20 @@ class ScanActivity : AppCompatActivity() {
         binding = ActivityScanBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        cameraExecutor = Executors.newSingleThreadExecutor()
+        // Fil unique, comme avant — `analyze`, le bloc ML Kit et `proxy.close()`
+        // restent sérialisés dans l'ordre. Ce qui change est la **politique de
+        // rejet** : après `shutdown()`, une tâche soumise est jetée au lieu de
+        // lever. Sans ça, quitter l'écran pendant qu'une reconnaissance est en
+        // vol tuait l'application — plantage du 27/08/2026 à 08:28:12, une
+        // `RejectedExecutionException` remontée sur le fil principal depuis
+        // `zzs.onCanceled` : la fermeture du recognizer annule les tâches
+        // restantes, et play-services dispatche leurs rappels sur cet
+        // exécuteur-ci, déjà terminé. L'ordre de `onDestroy` n'y suffit pas,
+        // le dispatch passant par le handler principal.
+        cameraExecutor = ThreadPoolExecutor(
+            1, 1, 0L, TimeUnit.MILLISECONDS, LinkedBlockingQueue(),
+            ThreadPoolExecutor.DiscardPolicy()
+        )
 
         binding.cancel.setOnClickListener { finish() }
         // L'autofocus continu patine sur une gravure sans contraste : laisser
@@ -647,8 +662,11 @@ class ScanActivity : AppCompatActivity() {
         zoomHandler.removeCallbacks(rampeZoom)
         // Délier d'abord : sinon une analyse en vol atteint un recognizer fermé.
         cameraProvider?.unbindAll()
-        cameraExecutor.shutdown()
+        // Le recognizer avant l'exécuteur : ses annulations ont ainsi encore un
+        // exécuteur vivant où tomber. Celles qui arrivent quand même après sont
+        // jetées par la politique de rejet posée dans `onCreate`.
         recognizer.close()
+        cameraExecutor.shutdown()
     }
 
     companion object {
