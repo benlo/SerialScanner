@@ -14,11 +14,16 @@ import java.io.File
 import java.util.UUID
 
 /**
- * Vignette du cadre au moment de la validation.
+ * Vignette du numéro au moment de la validation.
  *
  * Le CLAUDE.md en fait un élément de contrôle : la vignette permet de vérifier
  * une lecture sans retourner à la machine, et de justifier au client un numéro
  * contesté. Sans elle, un scan live ne laisse aucune trace vérifiable.
+ *
+ * **Le cadre reçu est celui du numéro, pas celui du viseur** — voir
+ * [ScanRoi.vignette]. Une vignette qui ne montre pas le numéro ne vaut pas
+ * mieux qu'une vignette absente : elle coûte le contrôle de la ligne tout en
+ * donnant l'impression que la trace existe.
  */
 object Snapshot {
 
@@ -30,13 +35,18 @@ object Snapshot {
      * vide si la conversion échoue — une vignette manquante ne doit jamais
      * coûter la lecture elle-même.
      */
-    fun capturer(ctx: Context, proxy: ImageProxy, roi: ScanRoi.Box, rotation: Int): String =
+    fun capturer(ctx: Context, proxy: ImageProxy, cadre: ScanRoi.Box, rotation: Int): String =
         runCatching {
             val redresse = enBitmap(proxy, rotation) ?: return ""
-            val vignette = recadrer(redresse, roi)
+            val vignette = recadrer(redresse, cadre)
             val dossier = File(ctx.filesDir, Photos.DOSSIER).apply { mkdirs() }
             val fichier = File(dossier, "${UUID.randomUUID()}.jpg")
             fichier.outputStream().use { vignette.compress(Bitmap.CompressFormat.JPEG, QUALITE, it) }
+            Log.d(
+                TAG,
+                "vignette ${vignette.width}x${vignette.height} sur $cadre" +
+                    " (image redressée ${redresse.width}x${redresse.height})"
+            )
             if (vignette !== redresse) redresse.recycle()
             fichier.toURI().toString()
         }.getOrElse {
@@ -59,13 +69,13 @@ object Snapshot {
         return tourne
     }
 
-    private fun recadrer(source: Bitmap, roi: ScanRoi.Box): Bitmap {
+    private fun recadrer(source: Bitmap, cadre: ScanRoi.Box): Bitmap {
         // Le cadre déborde de l'image si le zoom a changé entre l'analyse et
         // la capture : ramener dans les bornes plutôt que de lever.
-        val left = roi.left.coerceIn(0, source.width - 1)
-        val top = roi.top.coerceIn(0, source.height - 1)
-        val largeur = roi.width.coerceIn(1, source.width - left)
-        val hauteur = roi.height.coerceIn(1, source.height - top)
+        val left = cadre.left.coerceIn(0, source.width - 1)
+        val top = cadre.top.coerceIn(0, source.height - 1)
+        val largeur = cadre.width.coerceIn(1, source.width - left)
+        val hauteur = cadre.height.coerceIn(1, source.height - top)
         return Bitmap.createBitmap(source, left, top, largeur, hauteur)
     }
 

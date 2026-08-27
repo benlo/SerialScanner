@@ -50,11 +50,24 @@ class MainActivity : AppCompatActivity() {
         ActivityResultContracts.PickMultipleVisualMedia(30)
     ) { uris -> if (uris.isNotEmpty()) processImages(uris) }
 
+    /**
+     * Le palier de zoom qui a lu la machine précédente.
+     *
+     * De session, pas de lot : c'est un raccourci d'atelier, pas une propriété
+     * du parc. La lumière change, l'opérateur change de poste, et le pire qui
+     * puisse arriver est que la rampe reprenne son balayage depuis là.
+     */
+    private var zoomRetenu = 0f
+
     private val scanLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
         if (result.resultCode != RESULT_OK) return@registerForActivityResult
         val data = result.data ?: return@registerForActivityResult
+        // Retenu même si la lecture part en vérification : le zoom a cadré la
+        // ligne, c'est un caractère qui a hésité.
+        zoomRetenu = data.getFloatExtra(ScanActivity.EXTRA_ZOOM, zoomRetenu)
+        Log.d(TAG, "palier retenu pour la machine suivante : ${zoomRetenu}×")
         val serial = data.getStringExtra(ScanActivity.EXTRA_SERIAL) ?: return@registerForActivityResult
         // Filet de sécurité : la liste transmise au scan peut avoir vieilli si
         // une lecture est arrivée entre-temps par l'import.
@@ -169,6 +182,7 @@ class MainActivity : AppCompatActivity() {
                         ArrayList(readings.mapNotNull { it.serial })
                     )
                     .putExtra(ScanActivity.EXTRA_MARQUE, lot.marque)
+                    .putExtra(ScanActivity.EXTRA_ZOOM, zoomRetenu)
                     .putExtra(
                         ScanActivity.EXTRA_GABARIT,
                         Depot.gabaritDuLot(this, lot)

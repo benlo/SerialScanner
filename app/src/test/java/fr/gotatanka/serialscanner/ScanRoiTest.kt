@@ -70,4 +70,46 @@ class ScanRoiTest {
         assertFalse(cadre.contientEntierement(ScanRoi.Box(-50, 50, 900, 150)))
         assertFalse(cadre.contientEntierement(ScanRoi.Box(100, 50, 1200, 150)))
     }
+
+    private val visible = ScanRoi.Box(0, 0, 1440, 1920)
+
+    /** Le cas du 25/08 : le gabarit lit hors de la bande du viseur, et la
+     *  vignette doit suivre le numéro, pas le viseur. */
+    @Test fun `la vignette entoure le numero, ou qu'il soit`() {
+        val numero = ScanRoi.Box(700, 1500, 1300, 1560)
+        val v = ScanRoi.vignette(numero, visible)
+        assertTrue(v.left < numero.left && v.right > numero.right)
+        assertTrue(v.top < numero.top && v.bottom > numero.bottom)
+        // Hors de la bande centrale du viseur : c'est tout l'objet du correctif.
+        assertFalse(ScanRoi.roi(visible).contains(numero.left, numero.top))
+    }
+
+    /** La marge est un multiple de la hauteur de la boîte : deux prises du
+     *  même numéro à des zooms différents donnent la même vignette, à
+     *  l'échelle près. */
+    @Test fun `la marge suit la hauteur du numero`() {
+        // Boîte de 40 de haut : 40 de marge. De 80 : 80.
+        val petit = ScanRoi.vignette(ScanRoi.Box(700, 900, 1000, 940), visible)
+        assertEquals(ScanRoi.Box(660, 860, 1040, 980), petit)
+        val grand = ScanRoi.vignette(ScanRoi.Box(700, 900, 1000, 980), visible)
+        assertEquals(ScanRoi.Box(620, 820, 1080, 1060), grand)
+    }
+
+    /** Un numéro contre le bord ne doit pas produire un rectangle hors image :
+     *  `Snapshot` recadre dessus, et un coin négatif lèverait. */
+    @Test fun `la vignette ne sort jamais du champ visible`() {
+        val coin = ScanRoi.vignette(ScanRoi.Box(0, 0, 200, 60), visible)
+        assertEquals(0, coin.left)
+        assertEquals(0, coin.top)
+        val bord = ScanRoi.vignette(ScanRoi.Box(1300, 1880, 1440, 1920), visible)
+        assertEquals(1440, bord.right)
+        assertEquals(1920, bord.bottom)
+    }
+
+    /** Une boîte de hauteur nulle ne doit pas rendre une vignette vide :
+     *  `Bitmap.createBitmap` refuse une largeur ou une hauteur de zéro. */
+    @Test fun `une boite degeneree garde au moins un pixel de marge`() {
+        val v = ScanRoi.vignette(ScanRoi.Box(700, 900, 700, 900), visible)
+        assertTrue(v.width >= 1 && v.height >= 1)
+    }
 }

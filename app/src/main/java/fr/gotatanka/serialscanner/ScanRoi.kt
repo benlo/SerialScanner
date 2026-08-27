@@ -19,6 +19,10 @@ object ScanRoi {
      *  peut être hors champ sans que rien ne le signale. */
     const val MARGE = 0.03f
 
+    /** Marge de la vignette, en multiples de la hauteur de la boîte du
+     *  numéro. Voir [vignette]. */
+    const val MARGE_VIGNETTE = 1f
+
     data class Box(val left: Int, val top: Int, val right: Int, val bottom: Int) {
         val width get() = right - left
         val height get() = bottom - top
@@ -53,6 +57,33 @@ object ScanRoi {
             270 -> Box(crop.top, imgW - crop.right, crop.bottom, imgW - crop.left)
             else -> crop
         }
+
+    /**
+     * Le rectangle de la vignette : la boîte du numéro, élargie de quoi le
+     * relire en contexte, et ramenée dans le champ visible.
+     *
+     * **Ce n'est pas le viseur.** Ça l'a été, et c'était faux dès qu'un gabarit
+     * entrait en jeu : le gabarit lit dans sa zone projetée, qui n'a aucune
+     * raison de tomber dans la bande centrale — c'est même sa raison d'être —,
+     * et le cadrage exigé devient alors l'image entière. La vignette
+     * enregistrée montrait donc une zone qui ne contenait pas le numéro, et
+     * la ligne n'était plus contrôlable sans retourner à la machine. Constaté
+     * le 25/08 sur un capot Apple d'un lot à gabarit.
+     *
+     * La marge est un multiple de la **hauteur** de la boîte, comme dans
+     * [Gabarit] : c'est ce qui la rend indépendante du zoom et de la distance.
+     * À un, on voit la ligne au-dessus et celle au-dessous — sur une étiquette
+     * le mot-clé et la date, sur un capot le contexte de la gravure.
+     */
+    fun vignette(numero: Box, visible: Box, marge: Float = MARGE_VIGNETTE): Box {
+        val m = (numero.height * marge).toInt().coerceAtLeast(1)
+        return Box(
+            (numero.left - m).coerceAtLeast(visible.left),
+            (numero.top - m).coerceAtLeast(visible.top),
+            (numero.right + m).coerceAtMost(visible.right),
+            (numero.bottom + m).coerceAtMost(visible.bottom)
+        )
+    }
 
     /** Le cadre, centré dans le champ visible. */
     fun roi(visible: Box, fracW: Float = FRAC_W, fracH: Float = FRAC_H): Box {

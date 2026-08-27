@@ -9,9 +9,21 @@ package fr.gotatanka.serialscanner
  * validé en vert.
  *
  * Un demi-tour de seconde suffit à changer l'échantillon : la main tremble,
- * l'autofocus respire, le bruit du capteur n'est plus le même. C'est moins
- * décorrélant qu'un changement de zoom — essayé, mais il faisait perdre la
- * ligne et bloquait la prise — et ça n'immobilise pas l'opérateur.
+ * l'autofocus respire, le bruit du capteur n'est plus le même. Et ça
+ * n'immobilise pas l'opérateur.
+ *
+ * **Le délai est seul, et c'est une mesure qui l'a décidé.** La confirmation a
+ * un temps été tentée à un autre palier de zoom, l'idée étant que deux zooms
+ * sont deux mesures franchement différentes. Logcat du 25/08 sur Pixel 6,
+ * étiquette Asus : la première lecture tombe à 2×, le saut renvoie à 1× — le
+ * palier que la rampe venait de quitter *parce qu'il rendait des trames
+ * vides* —, les deux meilleures lectures (identiques, à 145 et 290 ms) sont
+ * jetées par le délai d'établissement du zoom, et la validation finit par
+ * opposer une lecture à 2× à une lecture à 1× qui divergent sur trois
+ * caractères confondables. Le saut n'a pas fiabilisé : il a coûté 0,8 s et
+ * produit un `incertain` que trois lectures concordantes n'auraient pas eu.
+ * Sur une gravure Apple en lumière moyenne, le palier élargi ne rend jamais
+ * rien et la séquence tourne en rond.
  *
  * Le filet reste derrière : rien n'est « confirmé » tant qu'un œil n'a pas
  * regardé la photo. Voir [Etat].
@@ -64,29 +76,5 @@ class DoubleLecture(private val delaiMs: Long = DELAI_MS) {
          *  l'opérateur ne sente pas d'attente. À 7 images par seconde, c'est
          *  quatre images plus loin. */
         const val DELAI_MS = 600L
-
-        /** Écart minimal entre les deux zooms pour que la seconde lecture
-         *  apprenne quelque chose. En deçà, c'est la même image agrandie. */
-        const val ECART = 1.5f
-
-        /**
-         * Le palier où retenter la lecture, ou null s'il n'y en a pas.
-         *
-         * **On élargit d'abord.** Serrer donne plus de pixels par caractère,
-         * mais pousse le numéro hors du cadre — c'est ce qui faisait boucler la
-         * version d'hier soir : le palier serré ne rendait rien, la séquence
-         * repartait, sans fin. Élargir garde le numéro dans le cadre à coup sûr ;
-         * s'il devient illisible, l'appelant revient au palier de départ et
-         * confirme par le délai.
-         */
-        fun palierConfirmation(
-            paliers: List<Float>,
-            actuel: Float,
-            facteur: Float = ECART
-        ): Float? {
-            val dispo = paliers.filter { it > 0f }.sorted()
-            return dispo.lastOrNull { it <= actuel / facteur }
-                ?: dispo.firstOrNull { it >= actuel * facteur }
-        }
     }
 }

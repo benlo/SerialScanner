@@ -2,7 +2,6 @@ package fr.gotatanka.serialscanner
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -69,31 +68,5 @@ class DoubleLectureTest {
             DoubleLecture.Etape.Confirmer("C02W61SCQ6LC", 2200L),
             s.proposer("C02W61SCQ6LC", 1600L)
         )
-    }
-
-    private val paliers = listOf(1f, 2f, 3f, 4f, 5f, 6f)
-
-    /** On élargit d'abord : c'est le seul sens qui garde le numéro dans le
-     *  cadre à coup sûr. Serrer est ce qui faisait boucler la version d'hier. */
-    @Test fun `la confirmation se fait a un palier plus large`() {
-        assertEquals(4f, DoubleLecture.palierConfirmation(paliers, 6f))
-        assertEquals(2f, DoubleLecture.palierConfirmation(paliers, 4f))
-        assertEquals(3f, DoubleLecture.palierConfirmation(paliers, 5f))
-    }
-
-    /** Déjà au plan large : il ne reste qu'à serrer. */
-    @Test fun `au plan large on serre faute de mieux`() {
-        assertEquals(2f, DoubleLecture.palierConfirmation(paliers, 1f))
-    }
-
-    /** Un écart trop faible n'apprend rien : 6× contre 5×, c'est la même image. */
-    @Test fun `un palier trop proche n'est pas retenu`() {
-        assertEquals(1f, DoubleLecture.palierConfirmation(listOf(1f, 5f, 6f), 6f))
-        assertNull(DoubleLecture.palierConfirmation(listOf(5f, 6f), 6f))
-    }
-
-    @Test fun `sans palier disponible la confirmation se fera par le delai`() {
-        assertNull(DoubleLecture.palierConfirmation(listOf(1f), 1f))
-        assertNull(DoubleLecture.palierConfirmation(emptyList(), 2f))
     }
 }

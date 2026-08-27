@@ -58,33 +58,36 @@ class ScanActivity : AppCompatActivity() {
      *  seconde image n'est pas la première. */
     @Volatile private var prochaineLectureA = 0L
 
-    /**
-     * Échéance de la tentative au palier élargi, 0 quand il n'y en a pas.
-     *
-     * La seconde lecture est d'abord tentée à un autre zoom — deux zooms sont
-     * deux mesures franchement différentes, là où deux images du même cadrage
-     * partagent leurs défauts. Mais si le palier élargi ne rend rien, il faut
-     * **revenir**, pas insister : c'est l'absence de ce repli qui faisait
-     * boucler la version d'hier soir.
-     */
-    @Volatile private var essaiJusqua = 0L
-    private var zoomCourant = 1f
-    private var zoomPremiere = 1f
-    private var autoAvantSequence = true
+    /** Origine des temps de cet écran. Sans elle, mesurer un scan demande de
+     *  soustraire des horodatages logcat à la main — c'est ce qu'a coûté la
+     *  session du 25/08. */
+    private val debut = SystemClock.elapsedRealtime()
 
-    /** Dernier pas franchi dans la séquence, pour l'abandonner si l'opérateur
-     *  a quitté la ligne entre les deux lectures. */
-    @Volatile private var derniereEtape = 0L
+    /** Millisecondes écoulées depuis l'ouverture de l'écran. */
+    private fun depuisDebut() = SystemClock.elapsedRealtime() - debut
 
-    /** Rampe de zoom : le zoom recadre le capteur, donc à cadre égal chaque
-     *  caractère reçoit plus de pixels — c'est ce qui fait la différence entre
-     *  un Q et un O. On balaie les paliers tant qu'aucune ligne « Serial »
-     *  n'est en vue, et on se fige dès qu'on en voit une. */
+    @Volatile private var zoomCourant = 1f
+
+    /** Rampe de zoom : voir [Rampe]. On balaie les paliers tant qu'aucune ligne
+     *  « Serial » n'est en vue, et on se fige dès qu'on en voit une. */
     private val zoomHandler = Handler(Looper.getMainLooper())
     @Volatile private var autoZoom = true
     @Volatile private var dernierIndice = 0L
     private var palier = -1
     private var zoomMax = 1f
+
+    /** Le palier qui a lu la machine précédente, 0 à la première du lot. */
+    private val zoomSouhaite: Float by lazy { intent.getFloatExtra(EXTRA_ZOOM, 0f) }
+
+    /** Le départ au palier retenu n'a lieu qu'une fois, et seulement quand la
+     *  plage de zoom est connue : juste après `bindToLifecycle`, `zoomMax` vaut
+     *  encore 1 et tous les paliers seraient écartés. */
+    private var departPris = false
+
+    /** Fin de la pose : la rampe ne change pas de palier avant cet instant.
+     *  C'est le temps de se caler sur la machine suivante quand on enchaîne.
+     *  Voir [Rampe.POSE_MS]. */
+    @Volatile private var rampePasAvant = 0L
 
     /** Le gabarit du lot, s'il en a un. Null : on lit comme avant, à
      *  l'ancrage textuel — le chemin éprouvé sur les capots Apple. */
@@ -172,6 +175,14 @@ class ScanActivity : AppCompatActivity() {
             // cadrée à 20 cm, un caractère ne fait qu'une dizaine de pixels de haut
             // en VGA, et la queue du Q — un ou deux pixels — disparaît au
             // sous-échantillonnage. Le O, lui, survit : d'où les Q lus en O.
+            //
+            // Ce qu'on demande n'est pas ce qu'on obtient : le Pixel 6 n'expose
+            // que du 4:3 et rend 1920x1440, mesuré au logcat le 25/08. Les 360
+            // lignes en trop sont jetées deux fois — par le ViewPort à
+            // l'affichage, par la ROI à l'analyse — et coûtent environ un tiers
+            // des 135 ms par trame. On les paie quand même : la largeur est ce
+            // qui donne ses pixels au caractère, et demander un cadre plus petit
+            // la réduirait sur les appareils qui, eux, savent rendre du 16:9.
             val resolution = ResolutionSelector.Builder()
                 .setResolutionStrategy(
                     ResolutionStrategy(
@@ -204,6 +215,7 @@ class ScanActivity : AppCompatActivity() {
                 for ((bouton, ratio) in pastilles()) {
                     bouton.isEnabled = ratio <= zoomMax
                 }
+                poserPalierDeDepart()
             }
             zoomHandler.post(rampeZoom)
         }, ContextCompat.getMainExecutor(this))
@@ -219,9 +231,39 @@ class ScanActivity : AppCompatActivity() {
     private fun activerAuto() {
         autoZoom = true
         palier = -1
-        // Repartir du plan large : c'est la position de cadrage, celle où l'on
-        // retrouve la ligne avant de la serrer.
-        appliquerZoom(1f)
+        departPris = false
+        // Reprendre la main, c'est se recaler : la même pose qu'entre deux
+        // machines, sinon la rampe balaie sous le nez de l'opérateur.
+        rampePasAvant = SystemClock.elapsedRealtime() + Rampe.POSE_MS
+        // Le palier retenu du lot d'abord ; sans souvenir, le plan large, qui
+        // est la position de cadrage — celle où l'on retrouve la ligne avant
+        // de la serrer.
+        if (!poserPalierDeDepart()) appliquerZoom(1f)
+    }
+
+    /**
+     * Place la rampe au palier qui a lu la machine précédente.
+     *
+     * Rend `false` quand il n'y a rien à poser — premier scan du lot, ou zoom
+     * laissé à la main par l'opérateur. Le balayage reprend ensuite depuis ce
+     * palier : un lot dépareillé n'est pas bloqué, il perd seulement le
+     * raccourci.
+     */
+    private fun poserPalierDeDepart(): Boolean {
+        if (departPris || !autoZoom || zoomSouhaite <= 0f) return false
+        departPris = true
+        val possibles = Rampe.disponibles(zoomMax)
+        palier = Rampe.depart(possibles, zoomSouhaite)
+        Log.d(TAG, "départ au palier retenu ${possibles[palier]}× (souhaité ${zoomSouhaite}×)")
+        appliquerZoom(possibles[palier])
+        // L'observateur du zoom et le premier tour de rampe sont deux messages
+        // du même looper, dans un ordre que rien ne garantit. Remettre le
+        // handler à l'heure ici ne suffisait pas — le tour posté juste après
+        // `observe()` repartait à zéro délai et appelait `suivant()` trois
+        // millisecondes plus tard. C'est la pose, et elle seule, qui protège le
+        // palier qu'on vient de poser.
+        rampePasAvant = SystemClock.elapsedRealtime() + Rampe.POSE_MS
+        return true
     }
 
     private fun appliquerZoom(ratio: Float) {
@@ -243,10 +285,11 @@ class ScanActivity : AppCompatActivity() {
             if (!validated && autoZoom) {
                 // Une ancre vue récemment veut dire que le zoom actuel convient :
                 // continuer à balayer ferait perdre la ligne juste avant de la lire.
-                val surLaLigne = SystemClock.elapsedRealtime() - dernierIndice < STABLE_MS
-                if (!surLaLigne) {
-                    val possibles = PALIERS.filter { it <= zoomMax }.ifEmpty { listOf(1f) }
-                    palier = (palier + 1) % possibles.size
+                val maintenant = SystemClock.elapsedRealtime()
+                val surLaLigne = maintenant - dernierIndice < STABLE_MS
+                if (Rampe.avance(maintenant, rampePasAvant, surLaLigne)) {
+                    val possibles = Rampe.disponibles(zoomMax)
+                    palier = Rampe.suivant(palier, possibles.size)
                     Log.d(TAG, "rampe → ${possibles[palier]}× (max $zoomMax)")
                     appliquerZoom(possibles[palier])
                 }
@@ -268,8 +311,13 @@ class ScanActivity : AppCompatActivity() {
         )
         val roi = ScanRoi.roi(visible)
         val image = InputImage.fromMediaImage(media, rotation)
+        // Sur le fil caméra et non sur l'UI : les callbacks ML Kit y tombaient
+        // par défaut, et avec eux `motsDe`, `boiteDuNumero` et surtout
+        // l'encodage JPEG de `Snapshot.capturer` — du travail d'image sur le
+        // thread qui dessine l'aperçu. L'exécuteur est à fil unique, donc
+        // `analyze`, ce bloc et `proxy.close()` restent sérialisés dans l'ordre.
         recognizer.process(image)
-            .addOnSuccessListener { result ->
+            .addOnSuccessListener(cameraExecutor) { result ->
                 // Avec un gabarit, c'est la zone projetée depuis le mot-clé qui
                 // filtre le texte, et non plus le viseur. Tout ce qui tombe
                 // hors d'elle n'est pas analysé — la garantie `24M` et la date
@@ -284,10 +332,18 @@ class ScanActivity : AppCompatActivity() {
                     g.ancreParmi(mots)?.let { g.projeter(it.boite) }
                 }
                 val texte = textInRoi(result, zone ?: roi)
+                // Le délai restant fait partie de la trace : sans lui, on ne
+                // voit pas *pourquoi* une lecture parfaitement bonne n'a pas
+                // compté, et deux trames identiques écartées passent pour du
+                // silence.
+                val resteDelai = (prochaineLectureA - SystemClock.elapsedRealtime())
+                    .coerceAtLeast(0L)
                 Log.d(
                     TAG,
-                    "cadre ${proxy.width}x${proxy.height}" +
+                    "+${depuisDebut()}ms cadre ${proxy.width}x${proxy.height}" +
+                        " ${zoomCourant}×" +
                         (zone?.let { " gabarit→$it" } ?: "") +
+                        (if (resteDelai > 0) " [délai ${resteDelai}ms]" else "") +
                         " → «${texte.replace(SEPARATEUR, " ⏎ ")}»"
                 )
                 // La ligne gravée est en vue même si le numéro ne se lit pas
@@ -301,7 +357,6 @@ class ScanActivity : AppCompatActivity() {
                     dernierIndice = SystemClock.elapsedRealtime()
                 }
                 val faute = if (surLaLigne) Cadrage.LIGNE else Cadrage.RIEN
-                replierSiPalierMuet()
                 // Trop tôt : ce serait la même image que la première, donc la
                 // même erreur. C'est tout l'intérêt du délai.
                 if (SystemClock.elapsedRealtime() < prochaineLectureA) return@addOnSuccessListener
@@ -358,7 +413,6 @@ class ScanActivity : AppCompatActivity() {
                 }
                 cadrage(Cadrage.PRET, candidate)
                 val maintenant = SystemClock.elapsedRealtime()
-                derniereEtape = maintenant
                 // Une lettre que l'alphabet du fabricant proscrit est une
                 // erreur de lecture, même lue deux fois : deux passes de ML Kit
                 // sur la même gravure se trompent de la même façon.
@@ -366,28 +420,49 @@ class ScanActivity : AppCompatActivity() {
                 // un garde-fou plus mince : il part en vérification.
                 val ambigu = Controle.ambigu(candidate, format) ||
                     SerialParser.horsLigne(texte, candidate, profil)
-                val enSequence = sequence.enCours
-                when (val etape = sequence.proposer(candidate, maintenant)) {
+                // La séquence est touchée par deux fils — ici le fil caméra,
+                // et la rampe sur l'UI qui peut l'abandonner. [DoubleLecture]
+                // n'est pas concurrente : c'est ce verrou qui la protège.
+                val (enSequence, etape) = synchronized(sequence) {
+                    sequence.enCours to sequence.proposer(candidate, maintenant)
+                }
+                when (etape) {
                     is DoubleLecture.Etape.Confirmer -> {
+                        Log.d(
+                            TAG,
+                            "+${depuisDebut()}ms 1ʳᵉ lecture «$candidate» à ${zoomCourant}×" +
+                                (if (enSequence) " (divergence, la précédente est oubliée)" else "")
+                        )
+                        // Le zoom ne bouge pas : on reste au palier qui vient de
+                        // lire. Voir [DoubleLecture] — le saut vers un autre
+                        // palier a été mesuré et il coûtait plus qu'il ne
+                        // rapportait.
                         prochaineLectureA = etape.pasAvant
-                        // Une divergence garde le zoom où l'on est : on a déjà
-                        // deux points de vue, c'est le numéro qui hésite.
-                        if (enSequence) essaiJusqua = 0L else tenterAutrePalier()
                         runOnUiThread { binding.etapes.text = getString(R.string.scan_etape_une) }
                     }
                     is DoubleLecture.Etape.Valider -> {
-                        essaiJusqua = 0L
+                        Log.d(
+                            TAG,
+                            "+${depuisDebut()}ms VALIDÉ «${etape.serial}» à ${zoomCourant}×" +
+                                " incertain=${ambigu || etape.incertain}" +
+                                " (ambigu=$ambigu concordance=${!etape.incertain})"
+                        )
                         runOnUiThread { binding.etapes.text = getString(R.string.scan_etape_deux) }
                         validate(
                             etape.serial,
                             parsed,
-                            Snapshot.capturer(this, proxy, roi, rotation),
+                            // Sur le numéro lui-même, jamais sur le viseur :
+                            // avec un gabarit, le numéro n'y est pas. Voir
+                            // [ScanRoi.vignette].
+                            Snapshot.capturer(
+                                this, proxy, ScanRoi.vignette(boite, visible), rotation
+                            ),
                             ambigu || etape.incertain
                         )
                     }
                 }
             }
-            .addOnCompleteListener { proxy.close() }
+            .addOnCompleteListener(cameraExecutor) { proxy.close() }
     }
 
     /**
@@ -419,41 +494,34 @@ class ScanActivity : AppCompatActivity() {
      * veut être sûr. ML Kit le rend en un mot le plus souvent, parfois en
      * plusieurs : on recompose donc les mots consécutifs d'une même ligne.
      */
-    private fun tenterAutrePalier() {
-        zoomPremiere = zoomCourant
-        autoAvantSequence = autoZoom
-        val cible = DoubleLecture.palierConfirmation(PALIERS.filter { it <= zoomMax }, zoomCourant)
-            ?: return
-        Log.d(TAG, "confirmation tentée à ${cible}× (première lecture à ${zoomPremiere}×)")
-        autoZoom = false
-        appliquerZoom(cible)
-        val maintenant = SystemClock.elapsedRealtime()
-        prochaineLectureA = maintenant + ZOOM_MS
-        essaiJusqua = maintenant + ZOOM_MS + ESSAI_MS
-    }
-
-    /** Le palier élargi n'a rien rendu : retour au cadrage qui marchait. */
-    private fun replierSiPalierMuet() {
-        if (essaiJusqua == 0L || SystemClock.elapsedRealtime() < essaiJusqua) return
-        essaiJusqua = 0L
-        Log.d(TAG, "palier de confirmation muet, retour à ${zoomPremiere}×")
-        appliquerZoom(zoomPremiere)
-        prochaineLectureA = SystemClock.elapsedRealtime() + ZOOM_MS
-    }
-
-    /** Une première lecture laissée en plan est oubliée : sinon elle
-     *  confirmerait la machine suivante avec le numéro de la précédente. */
+    /**
+     * Une première lecture laissée en plan est oubliée : sinon elle
+     * confirmerait la machine suivante avec le numéro de la précédente.
+     *
+     * **Le compte part de la dernière ancre vue, pas du dernier candidat
+     * complet.** Il partait de celui-ci, et c'était le défaut signalé le 25/08
+     * sur les gravures Apple en lumière moyenne : pendant une confirmation
+     * difficile — ancre bien en vue, numéro pas encore net — aucun candidat
+     * n'atteint [Cadrage.PRET], donc le compteur courait pendant que
+     * l'opérateur visait juste, et la première lecture était jetée sous ses
+     * doigts. `dernierIndice` est mis à jour dès que la ligne est en vue, ce
+     * qui est exactement la condition « l'opérateur n'a pas quitté la machine ».
+     *
+     * Le garde-fou tient toujours pour le cas visé : passer d'une machine à la
+     * suivante fait perdre l'ancre le temps de lever le téléphone. Et même
+     * sans ça, une lecture retenue ne peut valider qu'un numéro qui lui est
+     * identique — un capot voisin diverge et repart en première lecture.
+     */
     private fun abandonnerSequenceSiPerdue() {
-        if (validated || !sequence.enCours) return
-        if (SystemClock.elapsedRealtime() - derniereEtape < SEQUENCE_MS) return
-        Log.d(TAG, "première lecture abandonnée, ligne perdue")
-        sequence.oublier()
-        essaiJusqua = 0L
-        binding.etapes.text = ""
-        // Le réglage de l'opérateur est rendu tel qu'il l'avait laissé : la
-        // séquence emprunte le zoom, elle ne le confisque pas.
-        autoZoom = autoAvantSequence
-        appliquerZoom(zoomPremiere)
+        if (validated) return
+        if (SystemClock.elapsedRealtime() - dernierIndice < SEQUENCE_MS) return
+        val perdue = synchronized(sequence) {
+            if (!sequence.enCours) false else { sequence.oublier(); true }
+        }
+        if (perdue) {
+            Log.d(TAG, "première lecture abandonnée, ligne perdue")
+            binding.etapes.text = ""
+        }
     }
 
     private fun boiteDuNumero(result: Text, serial: String): ScanRoi.Box? {
@@ -530,23 +598,33 @@ class ScanActivity : AppCompatActivity() {
         incertain: Boolean
     ) {
         if (validated) return
+        // Posé tout de suite, et non dans le bloc UI : c'est ce drapeau qui
+        // ferme la porte aux trames encore en vol sur le fil caméra.
         validated = true
-        setResult(RESULT_OK, Intent().apply {
-            putExtra(EXTRA_SERIAL, serial)
-            putExtra(EXTRA_MODEL, parsed.model)
-            putExtra(EXTRA_EMC, parsed.emc)
-            putExtra(EXTRA_INCERTAIN, incertain)
-            putExtra(EXTRA_PHOTO, photo)
-            gabaritDeduit?.let { putExtra(EXTRA_GABARIT_AUTO, GabaritStore.versJson(listOf(it))) }
-        })
-        // Deux impulsions pour une lecture incertaine : au poste, la différence
-        // se sent sans regarder l'écran.
-        vibrate(if (incertain) longArrayOf(0, 60, 90, 60) else longArrayOf(0, 80))
-        cadrage(Cadrage.PRET, serial)
-        // Le temps de voir « 1 ✓ 2 ✓ » : sans ce délai l'écran se ferme avant
-        // que la confirmation soit affichée, et le retour haptique reste le
-        // seul signal — insuffisant quand on doute d'un numéro.
-        binding.root.postDelayed({ finish() }, FIN_MS)
+        // Le zoom qui vient de lire part avec le résultat : la machine suivante
+        // du lot y démarrera au lieu de rebalayer la rampe. Voir [Rampe].
+        val zoomQuiALu = zoomCourant
+        runOnUiThread {
+            setResult(RESULT_OK, Intent().apply {
+                putExtra(EXTRA_SERIAL, serial)
+                putExtra(EXTRA_MODEL, parsed.model)
+                putExtra(EXTRA_EMC, parsed.emc)
+                putExtra(EXTRA_INCERTAIN, incertain)
+                putExtra(EXTRA_PHOTO, photo)
+                putExtra(EXTRA_ZOOM, zoomQuiALu)
+                gabaritDeduit?.let {
+                    putExtra(EXTRA_GABARIT_AUTO, GabaritStore.versJson(listOf(it)))
+                }
+            })
+            // Deux impulsions pour une lecture incertaine : au poste, la
+            // différence se sent sans regarder l'écran.
+            vibrate(if (incertain) longArrayOf(0, 60, 90, 60) else longArrayOf(0, 80))
+            cadrage(Cadrage.PRET, serial)
+            // Le temps de voir « 1 ✓ 2 ✓ » : sans ce délai l'écran se ferme
+            // avant que la confirmation soit affichée, et le retour haptique
+            // reste le seul signal — insuffisant quand on doute d'un numéro.
+            binding.root.postDelayed({ finish() }, FIN_MS)
+        }
     }
 
     private fun vibrate(motif: LongArray) {
@@ -574,13 +652,8 @@ class ScanActivity : AppCompatActivity() {
     }
 
     companion object {
-        /** Établissement du zoom demandé avant de relire. */
-        private const val ZOOM_MS = 400L
-
-        /** Durée laissée au palier élargi avant de revenir au précédent. */
-        private const val ESSAI_MS = 1200L
-
-        /** Au-delà, une séquence entamée est tenue pour perdue. */
+        /** Au-delà de ce silence — ancre comprise —, une séquence entamée est
+         *  tenue pour perdue. Voir [abandonnerSequenceSiPerdue]. */
         private const val SEQUENCE_MS = 4000L
 
         /** Affichage de la confirmation avant la fermeture de l'écran. */
@@ -606,10 +679,14 @@ class ScanActivity : AppCompatActivity() {
          *  avait pas. L'appelant décide s'il le garde. */
         const val EXTRA_GABARIT_AUTO = "gabaritAuto"
 
-        /** Du plan large au serré : la première position sert au cadrage, les
-         *  suivantes cherchent la finesse de gravure. */
-        /** Ratios de zoom balayés par la rampe, du cadrage au plus serré. */
-        private val PALIERS = listOf(1f, 2f, 3f, 4f, 5f, 6f)
+        /** Le palier de zoom qui a lu — reçu de la machine précédente à
+         *  l'entrée, rendu à l'appelant à la sortie. Un aller-retour plutôt
+         *  qu'un état de l'écran : trente capots identiques se lisent au même
+         *  zoom, et le retrouver coûtait près de deux secondes par machine. */
+        const val EXTRA_ZOOM = "zoom"
+
+        /** Temps laissé à un palier avant de passer au suivant. Les ratios
+         *  eux-mêmes sont dans [Rampe]. */
         private const val PALIER_MS = 1100L
         private const val STABLE_MS = 2500L
     }

@@ -99,7 +99,16 @@ open class VuePhoto @JvmOverloads constructor(
         val hi = d.intrinsicHeight.toFloat()
         if (li <= 0f || hi <= 0f) return
         ajustee = minOf(width / li, height / hi)
-        echelle = (height / hi).coerceIn(ajustee, ajustee * OUVERTURE)
+        // **L'image entière, à l'ouverture.** Elle s'ouvrait à `OUVERTURE` fois
+        // l'ajustement pour combler la hauteur, ce qui se justifiait quand la
+        // vignette était la large bande du viseur : le numéro n'en occupait
+        // qu'une part, et il fallait grossir pour le lire. Depuis que
+        // [ScanRoi.vignette] cadre le numéro lui-même, ce même zoom en cachait
+        // la moitié — constaté le 25/08, `KIN0CV03K34002H` ouvert sur
+        // `0CV03K340`, les deux bouts hors champ. Or c'est précisément le
+        // premier et le dernier caractère qu'un contrôle doit voir. Le geste
+        // de pincement reste là pour grossir, jusqu'à [MAX].
+        echelle = ajustee
         transfo.setScale(echelle, echelle)
         transfo.postTranslate((width - li * echelle) / 2f, (height - hi * echelle) / 2f)
         imageMatrix = transfo
@@ -159,8 +168,6 @@ open class VuePhoto @JvmOverloads constructor(
          *  à montrer, on agrandit du flou. */
         const val MAX = 12f
 
-        /** Agrandissement maximal consenti à l'ouverture. Au-delà on ne voit
-         *  plus assez de la ligne pour savoir où on est dessus. */
-        const val OUVERTURE = 2f
+
     }
 }
