@@ -45,4 +45,40 @@ object Recompose {
         }
         return null
     }
+
+    /**
+     * Le texte des mots dont le centre tombe dans [zone], ligne par ligne.
+     *
+     * **Au grain du mot, et c'est tout le sujet.** Le découpage se faisait au
+     * grain de la ligne : une `Text.Line` était retenue si le centre de la
+     * *ligne entière* tombait dans la zone. Or la zone d'un gabarit est taillée
+     * pour le numéro seul, et ML Kit rend souvent la gravure d'un bloc —
+     * `Rated 20.3V 3A max. Serial C02X50KKJHD3`. Le centre de cette ligne est
+     * loin à gauche du numéro, donc hors zone : la trame était jetée alors que
+     * le numéro y figurait, correctement lu.
+     *
+     * Mesuré sur le relevé du 27/08/2026, 2377 trames : le point clé était
+     * retrouvé sur 83 % d'entre elles, mais la zone ne rendait du texte que sur
+     * 12 % — moins que le viseur nu, à 27 %. Les zones qui attrapaient une
+     * ligne entière faisaient 511 px de large en moyenne, contre 333 px pour
+     * celles qui revenaient vides : seule une zone assez large pour englober le
+     * centre d'une ligne fusionnée voyait quoi que ce soit. Le gabarit rendait
+     * la lecture plus rare au lieu de la rendre plus sûre.
+     *
+     * Le mot est indivisible : la zone le prend ou le laisse, elle ne le coupe
+     * jamais en son milieu. Un caractère de bord ne peut donc pas se perdre
+     * ici — il se perdrait à la reconnaissance, ce que la longueur exacte du
+     * gabarit attrape. C'est aussi le grain auquel [boite] recompose et auquel
+     * [Gabarit] mesure son échelle : les trois raisonnent enfin pareil.
+     */
+    fun texteDans(
+        lignes: List<List<Gabarit.Mot>>,
+        zone: ScanRoi.Box,
+        separateur: String = "\n"
+    ): String =
+        lignes.mapNotNull { mots ->
+            mots.filter { zone.contains(it.boite.centreX, it.boite.centreY) }
+                .takeIf { it.isNotEmpty() }
+                ?.joinToString(" ") { it.texte }
+        }.joinToString(separateur)
 }

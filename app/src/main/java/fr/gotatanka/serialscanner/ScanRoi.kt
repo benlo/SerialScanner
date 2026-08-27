@@ -26,6 +26,8 @@ object ScanRoi {
     data class Box(val left: Int, val top: Int, val right: Int, val bottom: Int) {
         val width get() = right - left
         val height get() = bottom - top
+        val centreX get() = (left + right) / 2
+        val centreY get() = (top + bottom) / 2
         fun contains(x: Int, y: Int) = x in left..right && y in top..bottom
 
         /**

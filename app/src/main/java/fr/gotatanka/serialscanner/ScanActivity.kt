@@ -338,7 +338,8 @@ class ScanActivity : AppCompatActivity() {
                 // hors d'elle n'est pas analysé — la garantie `24M` et la date
                 // `MFD:` cessent d'être des candidats, non parce qu'elles
                 // échouent à un test mais parce qu'on ne les regarde pas.
-                val mots = motsDe(result)
+                val lignes = lignesDe(result)
+                val mots = lignes.flatten()
                 if (gabarit == null) etalonner(mots)
                 // Le gabarit reçu, ou celui qu'on vient de déduire : l'étalonnage
                 // prend effet dans la session même, sinon un lot dont la lecture
@@ -346,7 +347,14 @@ class ScanActivity : AppCompatActivity() {
                 val zone = (gabarit ?: gabaritDeduit)?.let { g ->
                     g.ancreParmi(mots)?.let { g.projeter(it.boite) }
                 }
-                val texte = textInRoi(result, zone ?: roi)
+                // Deux découpages, parce que les deux zones n'ont pas la même
+                // taille. Le viseur est une bande large : le grain de la ligne y
+                // rend la gravure entière, dont [SerialParser.parse] tire aussi
+                // le modèle et l'EMC. La zone d'un gabarit est taillée pour le
+                // numéro seul : au grain de la ligne, elle ratait une trame sur
+                // six. Voir [Recompose.texteDans].
+                val texte = if (zone != null) Recompose.texteDans(lignes, zone)
+                else textInRoi(result, roi)
                 // Le délai restant fait partie de la trace : sans lui, on ne
                 // voit pas *pourquoi* une lecture parfaitement bonne n'a pas
                 // compté, et deux trames identiques écartées passent pour du
@@ -421,7 +429,7 @@ class ScanActivity : AppCompatActivity() {
                 // serait intenable. Il doit tenir dans l'image visible, ce qui
                 // suffit a garantir qu'aucun caractere n'est coupe au bord.
                 val cadreExige = if (zone != null) visible else roi
-                val boite = boiteDuNumero(result, candidate)
+                val boite = boiteDuNumero(lignes, candidate)
                 if (boite == null || !cadreExige.contientEntierement(boite)) {
                     cadrage(Cadrage.LIGNE, getString(R.string.scan_recentrer, candidate))
                     return@addOnSuccessListener
@@ -539,17 +547,9 @@ class ScanActivity : AppCompatActivity() {
         }
     }
 
-    private fun boiteDuNumero(result: Text, serial: String): ScanRoi.Box? {
-        val lignes = result.textBlocks.flatMap { it.lines }.map { ligne ->
-            ligne.elements.mapNotNull { e ->
-                e.boundingBox?.let {
-                    Gabarit.Mot(e.text, ScanRoi.Box(it.left, it.top, it.right, it.bottom))
-                }
-            }
-        }
-        return Recompose.boite(lignes, serial)
+    private fun boiteDuNumero(lignes: List<List<Gabarit.Mot>>, serial: String): ScanRoi.Box? =
+        Recompose.boite(lignes, serial)
             ?: null.also { Log.d(TAG, "numero " + serial + " introuvable dans les mots reconnus") }
-    }
 
     /**
      * Cherche le gabarit du lot dans la trame, tant qu'il n'en a pas.
@@ -581,19 +581,27 @@ class ScanActivity : AppCompatActivity() {
     }
 
     /**
-     * Les mots reconnus et leurs boîtes.
+     * Les mots reconnus et leurs boîtes, groupés par ligne.
      *
      * Au grain du mot et non de la ligne : le gabarit raisonne sur la boîte du
      * mot-clé seul, alors qu'une ligne peut porter `SN:` *et* la garantie, ce
      * qui doublerait sa largeur et fausserait l'unité d'échelle.
+     *
+     * Le groupement par ligne est conservé parce que trois lectures en
+     * dépendent — [Recompose.boite] ne recompose que des mots **consécutifs
+     * d'une même ligne**, [Recompose.texteDans] découpe la zone du gabarit au
+     * même grain, et [SerialParser.dansZone] relit ces lignes. Une seule
+     * traversée pour les trois : elles se contredisaient quand elles
+     * redécoupaient chacune de leur côté.
      */
-    private fun motsDe(result: Text): List<Gabarit.Mot> =
+    private fun lignesDe(result: Text): List<List<Gabarit.Mot>> =
         result.textBlocks
             .flatMap { it.lines }
-            .flatMap { it.elements }
-            .mapNotNull { e ->
-                e.boundingBox?.let {
-                    Gabarit.Mot(e.text, ScanRoi.Box(it.left, it.top, it.right, it.bottom))
+            .map { ligne ->
+                ligne.elements.mapNotNull { e ->
+                    e.boundingBox?.let {
+                        Gabarit.Mot(e.text, ScanRoi.Box(it.left, it.top, it.right, it.bottom))
+                    }
                 }
             }
 
